@@ -633,6 +633,7 @@ export default function StudyTracking({ flashSaved }) {
   const [addingChildOf, setAddingChildOf] = useState(null)
   const [addingChildText, setAddingChildText] = useState('')
   const [newTopicName, setNewTopicName] = useState('')
+  const [selectedTopicIds, setSelectedTopicIds] = useState(() => new Set())
 
   const dataRef = useRef(null)
 
@@ -685,6 +686,7 @@ export default function StudyTracking({ flashSaved }) {
     const prev = undoStack.pop()
     setEditingId(null)
     setAddingChildOf(null)
+    setSelectedTopicIds(new Set())
     setData(prev)
     persist(prev)
   }
@@ -693,6 +695,7 @@ export default function StudyTracking({ flashSaved }) {
     if (!confirm('Reset the study mindmap to defaults? This clears your custom topics.')) return
     undoStack.push(data)
     const next = defaultData()
+    setSelectedTopicIds(new Set())
     setData(next)
     persist(next)
   }
@@ -744,6 +747,12 @@ export default function StudyTracking({ flashSaved }) {
   function handleDelete(id, name) {
     if (!confirm(`Delete "${name}" and everything under it?`)) return
     update((d) => deleteTopic(d, id))
+    setSelectedTopicIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   function handleToggleExpand(id) {
@@ -762,7 +771,26 @@ export default function StudyTracking({ flashSaved }) {
     persist(next)
   }
 
+  function toggleTopicSelection(id) {
+    setSelectedTopicIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function selectAllTopics() {
+    setSelectedTopicIds(new Set(data.topics.map((t) => t.id)))
+  }
+
+  function clearTopicSelection() {
+    setSelectedTopicIds(new Set())
+  }
+
   const topicCount = countTopics(data.topics)
+  const hasSelection = selectedTopicIds.size > 0
+  const visibleTopics = hasSelection ? data.topics.filter((t) => selectedTopicIds.has(t.id)) : data.topics
 
   const callbacks = {
     onToggleExpand: handleToggleExpand,
@@ -795,6 +823,35 @@ export default function StudyTracking({ flashSaved }) {
       </div>
 
       <div className="gcard">
+        <h2>Jump to a Section</h2>
+        <div className="gsub">
+          {hasSelection
+            ? `Showing ${visibleTopics.length} of ${data.topics.length} section${data.topics.length === 1 ? '' : 's'}.`
+            : `All ${data.topics.length} section${data.topics.length === 1 ? '' : 's'} shown. Select one or more topics to filter the mindmaps below.`}
+        </div>
+        <div className="study-topic-chip-row">
+          {data.topics.map((topic) => (
+            <button
+              key={topic.id}
+              type="button"
+              className={`study-topic-chip ${selectedTopicIds.has(topic.id) ? 'active' : ''}`}
+              onClick={() => toggleTopicSelection(topic.id)}
+            >
+              {topic.name}
+            </button>
+          ))}
+        </div>
+        <div className="study-topic-chip-actions">
+          <button className="btn-outline" onClick={selectAllTopics}>
+            Select all
+          </button>
+          <button className="btn-outline" onClick={clearTopicSelection} disabled={!hasSelection}>
+            Show all
+          </button>
+        </div>
+      </div>
+
+      <div className="gcard">
         <h2>Study Mindmap</h2>
         <div className="gsub">
           {topicCount} topic{topicCount === 1 ? '' : 's'} across {data.topics.length} section
@@ -816,7 +873,11 @@ export default function StudyTracking({ flashSaved }) {
 
       {data.topics.length === 0 && <div className="empty-state-sm">No sections yet — add your first one above.</div>}
 
-      {data.topics.map((topic) => (
+      {hasSelection && visibleTopics.length === 0 && (
+        <div className="empty-state-sm">No sections match your selection.</div>
+      )}
+
+      {visibleTopics.map((topic) => (
         <TopicMindmapCard
           key={topic.id}
           topic={topic}

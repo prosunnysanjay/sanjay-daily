@@ -200,6 +200,33 @@ describe('Study Tracking tab', () => {
     await waitFor(() => expect(screen.queryByText('Custom Topic XYZ')).not.toBeInTheDocument())
     expect(screen.getByTitle('Linux')).toBeInTheDocument()
   })
+
+  it('selecting a section chip filters to just that mindmap, and multiple chips filter to a subset', async () => {
+    await unlockApp()
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByText('Jump to a Section'))
+
+    // Select just Linux -> only Linux section renders
+    fireEvent.click(screen.getByText('Linux', { selector: '.study-topic-chip' }))
+    await waitFor(() => expect(screen.getAllByText('Linux', { selector: 'h2' }).length).toBe(1))
+    expect(screen.queryByText('Kubernetes (alternatives: Docker Swarm, Nomad, OpenShift, ECS)', { selector: 'h2' })).not.toBeInTheDocument()
+
+    // Also select Kubernetes -> both sections render, others stay hidden
+    fireEvent.click(
+      screen.getByText('Kubernetes (alternatives: Docker Swarm, Nomad, OpenShift, ECS)', { selector: '.study-topic-chip' }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Kubernetes (alternatives: Docker Swarm, Nomad, OpenShift, ECS)', { selector: 'h2' }).length,
+      ).toBe(1),
+    )
+    expect(screen.getAllByText('Linux', { selector: 'h2' }).length).toBe(1)
+    expect(screen.queryByText('SRE', { selector: 'h2' })).not.toBeInTheDocument()
+
+    // "Show all" clears the filter
+    fireEvent.click(screen.getByText('Show all'))
+    await waitFor(() => expect(screen.getAllByText('SRE', { selector: 'h2' }).length).toBe(1))
+  })
 })
 
 describe('Projects tab', () => {
