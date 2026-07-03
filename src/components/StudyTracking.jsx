@@ -4,23 +4,200 @@ import { uid, makeUndoStack } from '../lib/utils'
 
 const undoStack = makeUndoStack(20)
 
+function leaf(id, name) {
+  return { id, name, expanded: true, children: [] }
+}
+
 const DEFAULT_TOPICS = [
+  leaf('topic_linux', 'Linux'),
   {
-    id: 'topic_linux',
-    name: 'Linux',
+    id: 'topic_docker',
+    name: 'Docker (alternatives: Podman, containerd, rkt)',
     expanded: true,
     children: [
-      {
-        id: 'topic_docker',
-        name: 'Docker',
-        expanded: true,
-        children: [
-          { id: 'topic_multistage', name: 'Multistage builds', expanded: true, children: [] },
-          { id: 'topic_compose', name: 'Docker Compose', expanded: true, children: [] },
-          { id: 'topic_volume', name: 'Volumes', expanded: true, children: [] },
-          { id: 'topic_network', name: 'Networking', expanded: true, children: [] },
-        ],
-      },
+      leaf('topic_multistage', 'Multistage builds'),
+      leaf('topic_compose', 'Docker Compose'),
+      leaf('topic_volume', 'Volumes'),
+      leaf('topic_network', 'Networking'),
+      leaf('topic_docker_images', 'Images'),
+      leaf('topic_docker_registries', 'Registries'),
+    ],
+  },
+  {
+    id: 'topic_kubernetes',
+    name: 'Kubernetes (alternatives: Docker Swarm, Nomad, OpenShift, ECS)',
+    expanded: true,
+    children: [
+      leaf('topic_k8s_pods', 'Pods'),
+      leaf('topic_k8s_deployments', 'Deployments'),
+      leaf('topic_k8s_statefulsets', 'StatefulSets'),
+      leaf('topic_k8s_daemonsets', 'DaemonSets'),
+      leaf('topic_k8s_services', 'Services'),
+      leaf('topic_k8s_ingress', 'Ingress'),
+      leaf('topic_k8s_configmaps', 'ConfigMaps'),
+      leaf('topic_k8s_secrets', 'Secrets'),
+      leaf('topic_k8s_rbac', 'RBAC'),
+      leaf('topic_k8s_networkpolicies', 'NetworkPolicies'),
+      leaf('topic_k8s_hpa_vpa', 'HPA/VPA'),
+      leaf('topic_k8s_crds', 'CRDs'),
+      leaf('topic_k8s_operators', 'Operators'),
+    ],
+  },
+  {
+    id: 'topic_helm',
+    name: 'Helm (alternatives: Kustomize, Helmfile)',
+    expanded: true,
+    children: [
+      leaf('topic_helm_charts', 'Charts'),
+      leaf('topic_helm_values', 'Values'),
+      leaf('topic_helm_templates', 'Templates'),
+      leaf('topic_helm_hooks', 'Hooks'),
+      leaf('topic_helm_repositories', 'Repositories'),
+    ],
+  },
+  {
+    id: 'topic_terraform',
+    name: 'Terraform & Terragrunt (alternatives: Pulumi, CloudFormation, Bicep, Ansible)',
+    expanded: true,
+    children: [
+      leaf('topic_tf_state', 'State'),
+      leaf('topic_tf_modules', 'Modules'),
+      leaf('topic_tf_providers', 'Providers'),
+      leaf('topic_tf_workspaces', 'Workspaces'),
+      leaf('topic_tf_dry', 'DRY patterns'),
+    ],
+  },
+  {
+    id: 'topic_service_mesh',
+    name: 'Service Mesh (Istio, Linkerd, Consul)',
+    expanded: true,
+    children: [
+      leaf('topic_sm_sidecars', 'Sidecars'),
+      leaf('topic_sm_traffic', 'Traffic management'),
+      leaf('topic_sm_mtls', 'mTLS'),
+    ],
+  },
+  {
+    id: 'topic_observability',
+    name: 'Observability (Prometheus, Grafana, ELK/EFK, Datadog; alternatives: New Relic, Dynatrace, Splunk)',
+    expanded: true,
+    children: [
+      leaf('topic_obs_metrics', 'Metrics'),
+      leaf('topic_obs_logs', 'Logs'),
+      leaf('topic_obs_traces', 'Traces'),
+      leaf('topic_obs_alerting', 'Alerting'),
+      leaf('topic_obs_slos', 'SLOs'),
+    ],
+  },
+  {
+    id: 'topic_azure',
+    name: 'Azure (alternatives: AWS, GCP equivalents)',
+    expanded: true,
+    children: [
+      leaf('topic_azure_compute', 'Compute'),
+      leaf('topic_azure_networking', 'Networking'),
+      leaf('topic_azure_identity', 'Identity (Entra ID)'),
+      leaf('topic_azure_storage', 'Storage'),
+      leaf('topic_azure_governance', 'Governance (CAF/ALZ)'),
+    ],
+  },
+  {
+    id: 'topic_azure_security',
+    name: 'Azure Security (alternatives: AWS Security Hub/GuardDuty)',
+    expanded: true,
+    children: [
+      leaf('topic_azsec_defender', 'Defender for Cloud'),
+      leaf('topic_azsec_sentinel', 'Sentinel'),
+      leaf('topic_azsec_keyvault', 'Key Vault'),
+      leaf('topic_azsec_policy', 'Policy'),
+      leaf('topic_azsec_rbac', 'RBAC'),
+      leaf('topic_azsec_conditional_access', 'Conditional Access'),
+    ],
+  },
+  {
+    id: 'topic_cicd_scm',
+    name: 'CI/CD & SCM (alternatives: GitLab CI, CircleCI, Flux CD)',
+    expanded: true,
+    children: [
+      leaf('topic_cicd_git', 'Git'),
+      leaf('topic_cicd_github', 'GitHub'),
+      leaf('topic_cicd_actions', 'GitHub Actions'),
+      leaf('topic_cicd_jenkins', 'Jenkins'),
+      leaf('topic_cicd_azdo', 'Azure DevOps'),
+      leaf('topic_cicd_argocd', 'ArgoCD'),
+    ],
+  },
+  {
+    id: 'topic_ai_devops',
+    name: 'AI DevOps Tools',
+    expanded: true,
+    children: [
+      leaf('topic_ai_coding_assistants', 'Coding assistants (Cursor, GitHub Copilot, Claude Code)'),
+      leaf('topic_ai_infra_ops', 'AI infra/ops tools'),
+      leaf('topic_ai_vector_db', 'Storage/vector DBs'),
+    ],
+  },
+  {
+    id: 'topic_devsecops',
+    name: 'DevSecOps',
+    expanded: true,
+    children: [
+      leaf('topic_ds_owasp_top10', 'OWASP Top 10'),
+      leaf('topic_ds_sast', 'SAST (SonarQube, Semgrep)'),
+      leaf('topic_ds_sca', 'SCA (Snyk, Dependabot)'),
+      leaf('topic_ds_dast', 'DAST (OWASP ZAP)'),
+      leaf('topic_ds_container_scanning', 'Container scanning (Trivy)'),
+      leaf('topic_ds_iac_scanning', 'IaC scanning (Checkov, tfsec)'),
+      leaf('topic_ds_k8s_security', 'K8s security (Kube-bench, Falco)'),
+    ],
+  },
+  {
+    id: 'topic_scripting',
+    name: 'Scripting (alternative: PowerShell)',
+    expanded: true,
+    children: [leaf('topic_script_bash', 'Bash'), leaf('topic_script_python', 'Python')],
+  },
+  {
+    id: 'topic_system_design',
+    name: 'System Design',
+    expanded: true,
+    children: [
+      leaf('topic_sysdes_scalability', 'Scalability'),
+      leaf('topic_sysdes_load_balancing', 'Load balancing'),
+      leaf('topic_sysdes_caching', 'Caching'),
+      leaf('topic_sysdes_cap', 'CAP theorem'),
+      leaf('topic_sysdes_sharding', 'Database sharding'),
+    ],
+  },
+  {
+    id: 'topic_azure_sa',
+    name: 'Azure Solutions Architect',
+    expanded: true,
+    children: [
+      leaf('topic_azsa_waf', 'Well-architected framework'),
+      leaf('topic_azsa_landing_zones', 'Landing zones'),
+      leaf('topic_azsa_dr_ha', 'DR/HA design'),
+    ],
+  },
+  {
+    id: 'topic_platform_eng',
+    name: 'Platform Engineering',
+    expanded: true,
+    children: [
+      leaf('topic_pe_idp', 'Internal developer platforms'),
+      leaf('topic_pe_golden_paths', 'Golden paths'),
+      leaf('topic_pe_backstage', 'Backstage'),
+    ],
+  },
+  {
+    id: 'topic_sre',
+    name: 'SRE',
+    expanded: true,
+    children: [
+      leaf('topic_sre_sli_slo_sla', 'SLI/SLO/SLA'),
+      leaf('topic_sre_error_budgets', 'Error budgets'),
+      leaf('topic_sre_incident_mgmt', 'Incident management'),
+      leaf('topic_sre_chaos_engineering', 'Chaos engineering'),
     ],
   },
 ]
