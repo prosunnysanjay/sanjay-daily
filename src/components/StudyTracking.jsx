@@ -1,4 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  Controls,
+  MiniMap,
+  Handle,
+  Position,
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { hierarchy, tree as d3tree } from 'd3-hierarchy'
 import { storageGet, storageSet, STORAGE_KEYS } from '../lib/supabase'
 import { uid, makeUndoStack } from '../lib/utils'
 
@@ -293,19 +307,260 @@ function moveTopic(draft, draggedId, targetId, position) {
   }
 }
 
-export default function StudyTracking({ flashSaved }) {
+// ---- Radial/branching mindmap rendering (React Flow + d3-hierarchy for layout) ----
+
+const ROOT_ID = '__study_root__'
+const PLACEHOLDER_ID = '__add_placeholder__'
+const NODE_WIDTH = 230
+const NODE_HEIGHT = 40
+const V_GAP = 14
+const H_GAP = 90
+
+function buildLayout(topics, addingChildOf) {
+  let sourceTopics = topics
+  if (addingChildOf) {
+    const clone = structuredClone(topics)
+    const loc = locateNode(clone, addingChildOf)
+    if (loc) {
+      loc.node.expanded = true
+      loc.node.children = loc.node.children || []
+      loc.node.children.push({ id: PLACEHOLDER_ID, name: '', isPlaceholder: true, expanded: false, children: [] })
+    }
+    sourceTopics = clone
+  }
+
+  const rootData = { id: ROOT_ID, name: 'Study Topics', isRoot: true, expanded: true, children: sourceTopics }
+  const root = hierarchy(rootData, (d) => (d.expanded && d.children && d.children.length ? d.children : undefined))
+  const layout = d3tree().nodeSize([NODE_HEIGHT + V_GAP, NODE_WIDTH + H_GAP])
+  layout(root)
+  return root
+}
+
+function buildFlow(topics, ctx) {
+  const root = buildLayout(topics, ctx.addingChildOf)
+  const descendants = root.descendants()
+
+  const nodes = descendants.map((d) => {
+    const t = d.data
+    const position = { x: d.y, y: d.x }
+    if (t.isRoot) {
+      return { id: t.id, type: 'rootNode', position, data: { name: t.name }, draggable: false, selectable: false }
+    }
+    if (t.isPlaceholder) {
+      return {
+        id: t.id,
+        type: 'addChildNode',
+        position,
+        data: {
+          text: ctx.addingChildText,
+          onTextChange: ctx.onAddChildTextChange,
+          onCommit: ctx.onCommitAddChild,
+          onCancel: ctx.onCancelAddChild,
+        },
+        draggable: false,
+        selectable: false,
+      }
+    }
+    const hasChildren = !!(t.children && t.children.length)
+    return {
+      id: t.id,
+      type: 'topicNode',
+      position,
+      dragHandle: '.study-drag-handle',
+      data: {
+        name: t.name,
+        hasChildren,
+        expanded: !!t.expanded,
+        isEditing: ctx.editingId === t.id,
+        editText: ctx.editingText,
+        onToggleExpand: ctx.onToggleExpand,
+        onStartEdit: ctx.onStartEdit,
+        onEditTextChange: ctx.onEditTextChange,
+        onCommitEdit: ctx.onCommitEdit,
+        onCancelEdit: ctx.onCancelEdit,
+        onStartAddChild: ctx.onStartAddChild,
+        onDelete: ctx.onDelete,
+      },
+    }
+  })
+
+  const edges = root.links().map((l) => ({
+    id: `e-${l.source.data.id}-${l.target.data.id}`,
+    source: l.source.data.id,
+    target: l.target.data.id,
+    type: 'default',
+    style: { stroke: 'var(--accent)', strokeWidth: 1.5, opacity: 0.5 },
+  }))
+
+  return { nodes, edges }
+}
+
+function RootNode({ data }) {
+  return (
+    <div className="study-flow-node study-flow-root-node">
+      <div className="study-flow-node-inner">
+        <span className="study-flow-name">{data.name}</span>
+      </div>
+      <Handle type="source" position={Position.Right} className="study-flow-handle" />
+    </div>
+  )
+}
+
+function TopicNode({ id, data }) {
+  const { name, hasChildren, expanded, isEditing, editText } = data
+  return (
+    <div className="study-flow-node" data-topic-id={id}>
+      <Handle type="target" position={Position.Left} className="study-flow-handle" />
+      <div className="study-flow-node-inner">
+        <span className="study-drag-handle" title="Drag to move">
+          ⠿
+        </span>
+        <button
+          type="button"
+          className="study-flow-caret"
+          onClick={() => hasChildren && data.onToggleExpand(id)}
+          style={{ visibility: hasChildren ? 'visible' : 'hidden' }}
+        >
+          {expanded ? '▾' : '▸'}
+        </button>
+
+        {isEditing ? (
+          <span className="study-flow-edit-wrap">
+            <input
+              className="study-flow-edit-input"
+              autoFocus
+              value={editText}
+              onChange={(e) => data.onEditTextChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') data.onCommitEdit()
+                if (e.key === 'Escape') data.onCancelEdit()
+              }}
+            />
+            <button type="button" className="study-flow-inline-btn" onClick={data.onCommitEdit}>
+              ✓
+            </button>
+            <button type="button" className="study-flow-inline-btn" onClick={data.onCancelEdit}>
+              ✕
+            </button>
+          </span>
+        ) : (
+          <span className="study-flow-name" title={name}>
+            {name}
+          </span>
+        )}
+
+        {!isEditing && (
+          <div className="study-flow-actions">
+            <button type="button" title="Add sub-topic" onClick={() => data.onStartAddChild(id)}>
+              ➕
+            </button>
+            <button type="button" title="Rename" onClick={() => data.onStartEdit(id, name)}>
+              ✎
+            </button>
+            <button type="button" title="Delete" className="danger" onClick={() => data.onDelete(id, name)}>
+              🗑
+            </button>
+          </div>
+        )}
+      </div>
+      <Handle type="source" position={Position.Right} className="study-flow-handle" />
+    </div>
+  )
+}
+
+function AddChildNode({ data }) {
+  return (
+    <div className="study-flow-node study-flow-add-node">
+      <Handle type="target" position={Position.Left} className="study-flow-handle" />
+      <div className="study-flow-node-inner">
+        <input
+          className="study-flow-edit-input"
+          autoFocus
+          placeholder="New sub-topic..."
+          value={data.text}
+          onChange={(e) => data.onTextChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') data.onCommit()
+            if (e.key === 'Escape') data.onCancel()
+          }}
+        />
+        <button type="button" className="study-flow-inline-btn" onClick={data.onCommit}>
+          Add
+        </button>
+        <button type="button" className="study-flow-inline-btn" onClick={data.onCancel}>
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const nodeTypes = { rootNode: RootNode, topicNode: TopicNode, addChildNode: AddChildNode }
+
+function clearDropHighlight(container) {
+  if (!container) return
+  container.querySelectorAll('.is-drop-before, .is-drop-after, .is-drop-inside').forEach((el) => {
+    el.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-inside')
+  })
+}
+
+function findDropTarget(layoutNodesById, draggedId, draggedPosition, topics) {
+  const draggedLoc = locateNode(topics, draggedId)
+  if (!draggedLoc) return null
+  const dLeft = draggedPosition.x
+  const dTop = draggedPosition.y
+  const dRight = dLeft + NODE_WIDTH
+  const dBottom = dTop + NODE_HEIGHT
+
+  let best = null
+  let bestArea = 0
+  for (const [id, pos] of layoutNodesById) {
+    if (id === draggedId || id === ROOT_ID) continue
+    if (isDescendant(draggedLoc.node, id)) continue
+    const left = pos.x
+    const top = pos.y
+    const right = left + NODE_WIDTH
+    const bottom = top + NODE_HEIGHT
+    const overlapX = Math.min(dRight, right) - Math.max(dLeft, left)
+    const overlapY = Math.min(dBottom, bottom) - Math.max(dTop, top)
+    if (overlapX > 0 && overlapY > 0) {
+      const area = overlapX * overlapY
+      if (area > bestArea) {
+        bestArea = area
+        const ratio = (dTop + NODE_HEIGHT / 2 - top) / NODE_HEIGHT
+        let position = 'inside'
+        if (ratio < 0.25) position = 'before'
+        else if (ratio > 0.75) position = 'after'
+        best = { id, position }
+      }
+    }
+  }
+  return best
+}
+
+function StudyTrackingCanvas({ flashSaved }) {
   const [data, setData] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editingText, setEditingText] = useState('')
   const [addingChildOf, setAddingChildOf] = useState(null)
   const [addingChildText, setAddingChildText] = useState('')
   const [newTopicName, setNewTopicName] = useState('')
-  const [draggedId, setDraggedId] = useState(null)
-  const [dragOverInfo, setDragOverInfo] = useState(null)
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+
+  const dataRef = useRef(null)
+  const containerRef = useRef(null)
+  const layoutNodesRef = useRef(new Map())
+  const { fitView } = useReactFlow()
 
   useEffect(() => {
     load()
   }, [])
+
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
 
   async function load() {
     let loaded = defaultData()
@@ -338,6 +593,36 @@ export default function StudyTracking({ flashSaved }) {
     })
   }
 
+  function recomputeFlow(topicsForLayout) {
+    const { nodes: flowNodes, edges: flowEdges } = buildFlow(topicsForLayout, {
+      editingId,
+      editingText,
+      addingChildOf,
+      addingChildText,
+      onToggleExpand: handleToggleExpand,
+      onStartEdit: startEdit,
+      onEditTextChange: setEditingText,
+      onCommitEdit: commitEdit,
+      onCancelEdit: cancelEdit,
+      onStartAddChild: startAddChild,
+      onDelete: handleDelete,
+      onAddChildTextChange: setAddingChildText,
+      onCommitAddChild: commitAddChild,
+      onCancelAddChild: cancelAddChild,
+    })
+    const byId = new Map(flowNodes.map((n) => [n.id, n.position]))
+    layoutNodesRef.current = byId
+    setNodes(flowNodes)
+    setEdges(flowEdges)
+    return flowNodes
+  }
+
+  useEffect(() => {
+    if (!data) return
+    recomputeFlow(data.topics)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, editingId, editingText, addingChildOf, addingChildText])
+
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   function handleUndo() {
@@ -358,6 +643,7 @@ export default function StudyTracking({ flashSaved }) {
     const next = defaultData()
     setData(next)
     persist(next)
+    setTimeout(() => fitView({ padding: 0.15, duration: 300, minZoom: 0.6, maxZoom: 1 }), 50)
   }
 
   function handleAddRootTopic() {
@@ -415,14 +701,33 @@ export default function StudyTracking({ flashSaved }) {
 
   function handleExpandAll(value) {
     update((d) => setAllExpanded(d, value), { snapshot: false })
+    setTimeout(() => fitView({ padding: 0.15, duration: 300, minZoom: 0.6, maxZoom: 1 }), 50)
   }
 
-  function handleDropOn(targetId) {
-    if (draggedId && dragOverInfo && dragOverInfo.id === targetId) {
-      update((d) => moveTopic(d, draggedId, targetId, dragOverInfo.position))
+  function handleNodeDrag(event, node) {
+    if (node.id === ROOT_ID || node.type !== 'topicNode') return
+    const target = findDropTarget(layoutNodesRef.current, node.id, node.position, dataRef.current.topics)
+    clearDropHighlight(containerRef.current)
+    if (target && containerRef.current) {
+      const el = containerRef.current.querySelector(`[data-topic-id="${target.id}"]`)
+      if (el) el.closest('.study-flow-node')?.classList.add(`is-drop-${target.position}`)
     }
-    setDraggedId(null)
-    setDragOverInfo(null)
+  }
+
+  function handleNodeDragStop(event, node) {
+    clearDropHighlight(containerRef.current)
+    if (node.id === ROOT_ID || node.type !== 'topicNode') return
+    const target = findDropTarget(layoutNodesRef.current, node.id, node.position, dataRef.current.topics)
+    if (target) {
+      const next = structuredClone(dataRef.current)
+      moveTopic(next, node.id, target.id, target.position)
+      undoStack.push(dataRef.current)
+      setData(next)
+      persist(next)
+      recomputeFlow(next.topics)
+    } else {
+      recomputeFlow(dataRef.current.topics)
+    }
   }
 
   const topicCount = countTopics(data.topics)
@@ -462,209 +767,36 @@ export default function StudyTracking({ flashSaved }) {
           <button onClick={handleAddRootTopic}>Add</button>
         </div>
 
-        {data.topics.length === 0 && (
-          <div className="empty-state-sm">No topics yet — add your first one above.</div>
-        )}
-
-        <div className="study-tree">
-          {data.topics.map((node) => (
-            <StudyNode
-              key={node.id}
-              node={node}
-              editingId={editingId}
-              editingText={editingText}
-              addingChildOf={addingChildOf}
-              addingChildText={addingChildText}
-              draggedId={draggedId}
-              dragOverInfo={dragOverInfo}
-              onToggleExpand={handleToggleExpand}
-              onStartEdit={startEdit}
-              onEditTextChange={setEditingText}
-              onCommitEdit={commitEdit}
-              onCancelEdit={cancelEdit}
-              onStartAddChild={startAddChild}
-              onAddChildTextChange={setAddingChildText}
-              onCommitAddChild={commitAddChild}
-              onCancelAddChild={cancelAddChild}
-              onDelete={handleDelete}
-              onDragStartNode={setDraggedId}
-              onDragOverNode={setDragOverInfo}
-              onDropNode={handleDropOn}
-            />
-          ))}
+        <div className="study-flow-wrap" ref={containerRef}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeDrag={handleNodeDrag}
+            onNodeDragStop={handleNodeDragStop}
+            nodeTypes={nodeTypes}
+            proOptions={{ hideAttribution: true }}
+            fitView
+            fitViewOptions={{ padding: 0.15, minZoom: 0.6, maxZoom: 1 }}
+            minZoom={0.15}
+            maxZoom={1.5}
+            nodesConnectable={false}
+          >
+            <Background gap={20} size={1} />
+            <Controls showInteractive={false} />
+            <MiniMap pannable zoomable />
+          </ReactFlow>
         </div>
       </div>
     </div>
   )
 }
 
-function StudyNode({
-  node,
-  editingId,
-  editingText,
-  addingChildOf,
-  addingChildText,
-  draggedId,
-  dragOverInfo,
-  onToggleExpand,
-  onStartEdit,
-  onEditTextChange,
-  onCommitEdit,
-  onCancelEdit,
-  onStartAddChild,
-  onAddChildTextChange,
-  onCommitAddChild,
-  onCancelAddChild,
-  onDelete,
-  onDragStartNode,
-  onDragOverNode,
-  onDropNode,
-}) {
-  const hasChildren = node.children && node.children.length > 0
-  const isEditing = editingId === node.id
-  const isAddingChild = addingChildOf === node.id
-  const isDragging = draggedId === node.id
-  const isDropTarget = !!dragOverInfo && dragOverInfo.id === node.id
-
-  function handleDragOver(e) {
-    e.preventDefault()
-    if (!draggedId || draggedId === node.id) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const ratio = (e.clientY - rect.top) / rect.height
-    let position = 'inside'
-    if (ratio < 0.25) position = 'before'
-    else if (ratio > 0.75) position = 'after'
-    onDragOverNode({ id: node.id, position })
-  }
-
-  const rowClass = [
-    'study-row',
-    isDragging ? 'dragging' : '',
-    isDropTarget ? `study-drop-${dragOverInfo.position}` : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-
+export default function StudyTracking(props) {
   return (
-    <div className="study-node">
-      <div
-        className={rowClass}
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.effectAllowed = 'move'
-          onDragStartNode(node.id)
-        }}
-        onDragEnd={() => {
-          onDragStartNode(null)
-          onDragOverNode(null)
-        }}
-        onDragOver={handleDragOver}
-        onDragLeave={() => isDropTarget && onDragOverNode(null)}
-        onDrop={(e) => {
-          e.preventDefault()
-          onDropNode(node.id)
-        }}
-      >
-        <span className="drag-handle">⠿</span>
-
-        <button
-          type="button"
-          className="study-caret"
-          onClick={() => hasChildren && onToggleExpand(node.id)}
-          style={{ visibility: hasChildren ? 'visible' : 'hidden' }}
-        >
-          {node.expanded ? '▾' : '▸'}
-        </button>
-
-        {isEditing ? (
-          <span className="study-edit-wrap">
-            <input
-              className="study-edit-input"
-              autoFocus
-              value={editingText}
-              onChange={(e) => onEditTextChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onCommitEdit()
-                if (e.key === 'Escape') onCancelEdit()
-              }}
-            />
-            <button type="button" className="study-inline-btn" onClick={onCommitEdit}>
-              ✓
-            </button>
-            <button type="button" className="study-inline-btn" onClick={onCancelEdit}>
-              ✕
-            </button>
-          </span>
-        ) : (
-          <span className="study-name">{node.name}</span>
-        )}
-
-        {!isEditing && (
-          <div className="study-actions">
-            <button type="button" title="Add sub-topic" onClick={() => onStartAddChild(node.id)}>
-              ➕
-            </button>
-            <button type="button" title="Rename" onClick={() => onStartEdit(node.id, node.name)}>
-              ✎
-            </button>
-            <button type="button" title="Delete" className="danger" onClick={() => onDelete(node.id, node.name)}>
-              🗑
-            </button>
-          </div>
-        )}
-      </div>
-
-      {((hasChildren && node.expanded) || isAddingChild) && (
-        <div className="study-tree-children">
-          {hasChildren &&
-            node.expanded &&
-            node.children.map((child) => (
-              <StudyNode
-                key={child.id}
-                node={child}
-                editingId={editingId}
-                editingText={editingText}
-                addingChildOf={addingChildOf}
-                addingChildText={addingChildText}
-                draggedId={draggedId}
-                dragOverInfo={dragOverInfo}
-                onToggleExpand={onToggleExpand}
-                onStartEdit={onStartEdit}
-                onEditTextChange={onEditTextChange}
-                onCommitEdit={onCommitEdit}
-                onCancelEdit={onCancelEdit}
-                onStartAddChild={onStartAddChild}
-                onAddChildTextChange={onAddChildTextChange}
-                onCommitAddChild={onCommitAddChild}
-                onCancelAddChild={onCancelAddChild}
-                onDelete={onDelete}
-                onDragStartNode={onDragStartNode}
-                onDragOverNode={onDragOverNode}
-                onDropNode={onDropNode}
-              />
-            ))}
-          {isAddingChild && (
-            <div className="study-add-child-row">
-              <input
-                autoFocus
-                placeholder="New sub-topic..."
-                value={addingChildText}
-                onChange={(e) => onAddChildTextChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') onCommitAddChild()
-                  if (e.key === 'Escape') onCancelAddChild()
-                }}
-              />
-              <button type="button" onClick={onCommitAddChild}>
-                Add
-              </button>
-              <button type="button" className="study-inline-btn" onClick={onCancelAddChild}>
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    <ReactFlowProvider>
+      <StudyTrackingCanvas {...props} />
+    </ReactFlowProvider>
   )
 }

@@ -865,139 +865,173 @@ input[type='checkbox'] {
   display: inline-block;
 }
 
-/* ---- STUDY TRACKING (mindmap tree) ---- */
-.study-tree {
-  margin-top: 4px;
+/* ---- STUDY TRACKING (radial mindmap canvas) ---- */
+.study-flow-wrap {
+  height: 72vh;
+  min-height: 520px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
 }
-.study-node {
-  position: relative;
+.study-flow-wrap .react-flow__background {
+  background: var(--bg);
 }
-.study-row {
+.study-flow-wrap .react-flow__edge-path {
+  stroke: var(--accent);
+}
+.study-flow-wrap .react-flow__controls {
+  box-shadow: var(--shadow);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.study-flow-wrap .react-flow__controls-button {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+.study-flow-wrap .react-flow__controls-button:hover {
+  background: var(--accent-soft);
+}
+.study-flow-wrap .react-flow__minimap {
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.study-flow-wrap .react-flow__attribution {
+  display: none;
+}
+
+.study-flow-node {
+  width: 230px;
+  pointer-events: auto;
+}
+.study-flow-node-inner {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
-  border-radius: 7px;
-  border: 1px solid transparent;
+  width: 100%;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  padding: 7px 10px;
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+.study-flow-node:hover .study-flow-node-inner {
+  border-color: var(--accent);
+}
+.study-flow-node.is-drop-before .study-flow-node-inner {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.study-flow-node.is-drop-after .study-flow-node-inner {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.study-flow-node.is-drop-inside .study-flow-node-inner {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.study-flow-root-node .study-flow-node-inner {
+  background: var(--ink);
+  border-color: var(--ink);
+  justify-content: center;
+  padding: 10px 18px;
+}
+.study-flow-root-node .study-flow-name {
+  color: #fff;
+  font-weight: 700;
+}
+.study-flow-add-node .study-flow-node-inner {
+  border-style: dashed;
+  border-color: var(--focus-border);
+  background: var(--focus-bg);
+}
+
+.study-drag-handle {
   cursor: grab;
+  color: var(--ink-soft);
+  font-size: 13px;
+  flex-shrink: 0;
+  user-select: none;
 }
-.study-row:hover {
-  background: var(--bg);
-}
-.study-row:active {
+.study-drag-handle:active {
   cursor: grabbing;
 }
-.study-row .drag-handle {
-  cursor: grab;
-}
-.study-caret {
+.study-flow-caret {
   border: none;
   background: none;
   cursor: pointer;
   font-size: 11px;
   color: var(--ink-soft);
-  width: 16px;
+  width: 14px;
   flex-shrink: 0;
   padding: 0;
 }
-.study-name {
+.study-flow-name {
   flex: 1;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 3px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.study-actions {
+.study-flow-actions {
   display: flex;
-  gap: 2px;
+  gap: 1px;
   flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.1s;
 }
-.study-row:hover .study-actions {
+.study-flow-node:hover .study-flow-actions {
   opacity: 1;
 }
-.study-actions button {
+.study-flow-actions button {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-soft);
-  padding: 3px 5px;
+  padding: 2px 4px;
   border-radius: 5px;
 }
-.study-actions button:hover {
+.study-flow-actions button:hover {
   color: var(--accent);
   background: var(--accent-soft);
 }
-.study-actions button.danger:hover {
+.study-flow-actions button.danger:hover {
   color: var(--bad);
   background: var(--bad-bg);
 }
-.study-edit-wrap {
+.study-flow-edit-wrap {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
-.study-edit-input {
+.study-flow-edit-input {
   flex: 1;
+  min-width: 90px;
   border: 1px solid var(--accent);
   border-radius: 6px;
-  padding: 5px 8px;
-  font-size: 13.5px;
+  padding: 4px 7px;
+  font-size: 13px;
   font-weight: 600;
   font-family: inherit;
 }
-.study-inline-btn {
+.study-flow-inline-btn {
   border: none;
   background: none;
   cursor: pointer;
   font-size: 12px;
   color: var(--ink-soft);
-  padding: 3px 6px;
+  padding: 2px 5px;
   flex-shrink: 0;
 }
-.study-inline-btn:hover {
+.study-flow-inline-btn:hover {
   color: var(--accent);
-}
-.study-tree-children {
-  margin-left: 19px;
-  padding-left: 14px;
-  border-left: 1.5px dashed var(--line);
-}
-.study-add-child-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 6px 8px;
-}
-.study-add-child-row input {
-  flex: 1;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 5px 8px;
-  font-size: 13px;
-  font-family: inherit;
-}
-.study-add-child-row button {
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.study-drop-before {
-  box-shadow: inset 0 2px 0 var(--accent);
-}
-.study-drop-after {
-  box-shadow: inset 0 -2px 0 var(--accent);
-}
-.study-drop-inside {
-  background: var(--accent-soft);
-  border: 1.5px dashed var(--accent);
 }
 
 .save-pill {
