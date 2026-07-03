@@ -43,7 +43,7 @@ describe('Tab navigation', () => {
   it('shows all 7 tabs', async () => {
     await unlockApp()
     const tabLabels = [...document.querySelectorAll('.main-tab')].map((t) => t.textContent)
-    expect(tabLabels).toEqual(['Home', 'Daily', 'Progress', 'Projects', 'Jobs', 'Earning Ideas', 'Motivate'])
+    expect(tabLabels).toEqual(['Home', 'Daily', 'Study Tracking', 'Projects', 'Jobs', 'Earning Ideas', 'Motivate'])
   })
 
   it('clicking Daily switches the panel', async () => {
@@ -54,8 +54,8 @@ describe('Tab navigation', () => {
 
   it('home nav cards navigate to their tab', async () => {
     await unlockApp()
-    fireEvent.click(screen.getByText('Progress', { selector: '.nc-title' }))
-    await waitFor(() => expect(screen.getByText('Habit Streaks')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Study Tracking', { selector: '.nc-title' }))
+    await waitFor(() => expect(screen.getByText('Study Mindmap')).toBeInTheDocument())
   })
 })
 
@@ -96,43 +96,85 @@ describe('Daily tab', () => {
   })
 })
 
-describe('Progress tab', () => {
-  it('renders default habits and metrics', async () => {
+describe('Study Tracking tab', () => {
+  it('renders the default mindmap topics', async () => {
     await unlockApp()
-    clickMainTab('Progress')
-    await waitFor(() => expect(screen.getByText('Morning routine')).toBeInTheDocument())
-    expect(screen.getByText('Blood Pressure')).toBeInTheDocument()
+    clickMainTab('Study Tracking')
+    await waitFor(() => expect(screen.getByText('Linux')).toBeInTheDocument())
+    expect(screen.getByText('Docker')).toBeInTheDocument()
+    expect(screen.getByText('Multistage builds')).toBeInTheDocument()
+    expect(screen.getByText('Docker Compose')).toBeInTheDocument()
+    expect(screen.getByText('Volumes')).toBeInTheDocument()
+    expect(screen.getByText('Networking')).toBeInTheDocument()
   })
 
-  it('logs a habit for today', async () => {
+  it('adds a new top-level topic', async () => {
     await unlockApp()
-    clickMainTab('Progress')
-    await waitFor(() => screen.getAllByText('Log today'))
-    const btn = screen.getAllByText('Log today')[0]
-    fireEvent.click(btn)
-    await waitFor(() => expect(screen.getAllByText('✓ Today')[0]).toBeInTheDocument())
-  })
-
-  it('undo reverts the habit log', async () => {
-    await unlockApp()
-    clickMainTab('Progress')
-    await waitFor(() => screen.getAllByText('Log today'))
-    fireEvent.click(screen.getAllByText('Log today')[0])
-    await waitFor(() => screen.getAllByText('✓ Today'))
-    fireEvent.click(screen.getByText('↺ Undo'))
-    await waitFor(() => expect(screen.getAllByText('Log today')[0]).toBeInTheDocument())
-  })
-
-  it('reset restores defaults and clears custom habits', async () => {
-    await unlockApp()
-    clickMainTab('Progress')
-    await waitFor(() => screen.getByPlaceholderText('Add a new habit to track...'))
-    const input = screen.getByPlaceholderText('Add a new habit to track...')
-    fireEvent.change(input, { target: { value: 'Custom Habit XYZ' } })
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...'))
+    const input = screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...')
+    fireEvent.change(input, { target: { value: 'Kubernetes' } })
     fireEvent.click(screen.getByText('Add', { selector: '.add-row button' }))
-    await waitFor(() => expect(screen.getByText('Custom Habit XYZ')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Kubernetes')).toBeInTheDocument())
+  })
+
+  it('adds a sub-topic under an existing topic', async () => {
+    await unlockApp()
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByText('Docker'))
+    const dockerRow = screen.getByText('Docker').closest('.study-row')
+    fireEvent.click(within(dockerRow).getByTitle('Add sub-topic'))
+    const childInput = screen.getByPlaceholderText('New sub-topic...')
+    fireEvent.change(childInput, { target: { value: 'Networking Drivers' } })
+    fireEvent.click(screen.getByText('Add', { selector: '.study-add-child-row button' }))
+    await waitFor(() => expect(screen.getByText('Networking Drivers')).toBeInTheDocument())
+  })
+
+  it('renames a topic', async () => {
+    await unlockApp()
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByText('Linux'))
+    const linuxRow = screen.getByText('Linux').closest('.study-row')
+    fireEvent.click(within(linuxRow).getByTitle('Rename'))
+    const editInput = screen.getByDisplayValue('Linux')
+    fireEvent.change(editInput, { target: { value: 'Linux Fundamentals' } })
+    fireEvent.click(screen.getByText('✓'))
+    await waitFor(() => expect(screen.getByText('Linux Fundamentals')).toBeInTheDocument())
+  })
+
+  it('collapses a topic so its children are hidden, then expands it again', async () => {
+    await unlockApp()
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByText('Docker'))
+    expect(screen.getByText('Multistage builds')).toBeInTheDocument()
+    const dockerRow = screen.getByText('Docker').closest('.study-row')
+    fireEvent.click(within(dockerRow).getByText('▾'))
+    await waitFor(() => expect(screen.queryByText('Multistage builds')).not.toBeInTheDocument())
+    fireEvent.click(within(dockerRow).getByText('▸'))
+    await waitFor(() => expect(screen.getByText('Multistage builds')).toBeInTheDocument())
+  })
+
+  it('deletes a topic and its sub-topics', async () => {
+    await unlockApp()
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByText('Docker'))
+    const dockerRow = screen.getByText('Docker').closest('.study-row')
+    fireEvent.click(within(dockerRow).getByTitle('Delete'))
+    await waitFor(() => expect(screen.queryByText('Docker')).not.toBeInTheDocument())
+    expect(screen.queryByText('Multistage builds')).not.toBeInTheDocument()
+  })
+
+  it('reset restores default topics after a custom add', async () => {
+    await unlockApp()
+    clickMainTab('Study Tracking')
+    await waitFor(() => screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...'))
+    const input = screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...')
+    fireEvent.change(input, { target: { value: 'Custom Topic XYZ' } })
+    fireEvent.click(screen.getByText('Add', { selector: '.add-row button' }))
+    await waitFor(() => expect(screen.getByText('Custom Topic XYZ')).toBeInTheDocument())
     fireEvent.click(screen.getByText('⟲ Reset to defaults'))
-    await waitFor(() => expect(screen.queryByText('Custom Habit XYZ')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Custom Topic XYZ')).not.toBeInTheDocument())
+    expect(screen.getByText('Linux')).toBeInTheDocument()
   })
 })
 

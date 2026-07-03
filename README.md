@@ -1,6 +1,6 @@
 # Sanjay's Daily
 
-A personal daily-driver app: tasks, timetable, habit/health tracking, projects, job search, business ideas, and motivation — all in one place, backed by Supabase.
+A personal daily-driver app: tasks, timetable, study tracking, projects, job search, business ideas, and motivation — all in one place, backed by Supabase.
 
 ## Project structure
 
@@ -10,7 +10,7 @@ src/
     PasswordGate.jsx   — login screen
     Home.jsx            — landing tab: stats, featured quote, navigation
     Daily.jsx           — today's tasks + grouped sections + per-day timetable
-    Progress.jsx        — habit streaks + health metric trend charts
+    StudyTracking.jsx   — study mindmap: expandable/editable topic tree with drag-and-drop
     Projects.jsx        — project cards (description, tools, concepts, image)
     Jobs.jsx             — dream companies + freelancing leads
     Earning.jsx          — content/business idea lists
@@ -44,7 +44,7 @@ Opens at `http://localhost:5173` with hot-reload.
 npm test
 ```
 
-26 tests cover every tab: adding/editing/deleting items, undo, reset, drag-drop wiring, and that data actually reaches Supabase.
+29 tests cover every tab: adding/editing/deleting items, undo, reset, drag-drop wiring, and that data actually reaches Supabase.
 
 ## Building for production
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import PasswordGate from './components/PasswordGate'
 import Home from './components/Home'
 import Daily from './components/Daily'
-import Progress from './components/Progress'
+import StudyTracking from './components/StudyTracking'
 import Projects from './components/Projects'
 import Jobs from './components/Jobs'
 import Earning from './components/Earning'
@@ -17,10 +17,10 @@ const TABS = [
     sub: "Left: what to do. Right: when to do it. They don't sync — edit either side freely.",
   },
   {
-    id: 'progress',
-    label: 'Progress',
-    title: 'Progress',
-    sub: 'Habit streaks and health trends — log manually, see the pattern over time.',
+    id: 'study',
+    label: 'Study Tracking',
+    title: 'Study Tracking',
+    sub: 'A mindmap of what you\'re learning — expand a topic into its sub-topics, drag to reorganize.',
   },
   { id: 'projects', label: 'Projects', title: 'Projects', sub: 'What you built, what you used, what it covers.' },
   {
@@ -73,7 +73,7 @@ function AppShell() {
 
       {activeTab === 'home' && <Home onNavigate={setActiveTab} />}
       {activeTab === 'daily' && <Daily flashSaved={flashSaved} />}
-      {activeTab === 'progress' && <Progress flashSaved={flashSaved} />}
+      {activeTab === 'study' && <StudyTracking flashSaved={flashSaved} />}
       {activeTab === 'projects' && <Projects flashSaved={flashSaved} />}
       {activeTab === 'jobs' && <Jobs flashSaved={flashSaved} />}
       {activeTab === 'earning' && <Earning flashSaved={flashSaved} />}
