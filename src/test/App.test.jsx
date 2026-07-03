@@ -97,47 +97,54 @@ describe('Daily tab', () => {
 })
 
 describe('Study Tracking tab', () => {
-  it('renders the default mindmap topics', async () => {
+  it('renders one mindmap section per top-level topic', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => expect(screen.getByText('Linux')).toBeInTheDocument())
-    expect(screen.getByText('Docker (alternatives: Podman, containerd, rkt)')).toBeInTheDocument()
+    // Each top-level topic renders as both a card heading and an interactive root
+    // node inside its own canvas — assert the section heading (h2) for those, and
+    // plain text for leaf sub-topics (which only appear once).
+    await waitFor(() => expect(screen.getAllByText('Linux', { selector: 'h2' }).length).toBe(1))
+    expect(screen.getAllByText('Docker (alternatives: Podman, containerd, rkt)', { selector: 'h2' }).length).toBe(1)
     expect(screen.getByText('Multistage builds')).toBeInTheDocument()
     expect(screen.getByText('Docker Compose')).toBeInTheDocument()
     expect(screen.getByText('Volumes')).toBeInTheDocument()
     expect(screen.getAllByText('Networking').length).toBeGreaterThan(0)
     expect(screen.getByText('Images')).toBeInTheDocument()
     expect(screen.getByText('Registries')).toBeInTheDocument()
-    expect(screen.getByText('Kubernetes (alternatives: Docker Swarm, Nomad, OpenShift, ECS)')).toBeInTheDocument()
-    expect(screen.getByText('Helm (alternatives: Kustomize, Helmfile)')).toBeInTheDocument()
-    expect(screen.getByText('Terraform & Terragrunt (alternatives: Pulumi, CloudFormation, Bicep, Ansible)')).toBeInTheDocument()
-    expect(screen.getByText('Service Mesh (Istio, Linkerd, Consul)')).toBeInTheDocument()
-    expect(screen.getByText('Azure Security (alternatives: AWS Security Hub/GuardDuty)')).toBeInTheDocument()
-    expect(screen.getByText('CI/CD & SCM (alternatives: GitLab CI, CircleCI, Flux CD)')).toBeInTheDocument()
-    expect(screen.getByText('AI DevOps Tools')).toBeInTheDocument()
-    expect(screen.getByText('DevSecOps')).toBeInTheDocument()
-    expect(screen.getByText('Scripting (alternative: PowerShell)')).toBeInTheDocument()
-    expect(screen.getByText('System Design')).toBeInTheDocument()
-    expect(screen.getByText('Azure Solutions Architect')).toBeInTheDocument()
-    expect(screen.getByText('Platform Engineering')).toBeInTheDocument()
-    expect(screen.getByText('SRE')).toBeInTheDocument()
+    expect(screen.getAllByText('Kubernetes (alternatives: Docker Swarm, Nomad, OpenShift, ECS)', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('Helm (alternatives: Kustomize, Helmfile)', { selector: 'h2' }).length).toBe(1)
+    expect(
+      screen.getAllByText('Terraform & Terragrunt (alternatives: Pulumi, CloudFormation, Bicep, Ansible)', {
+        selector: 'h2',
+      }).length,
+    ).toBe(1)
+    expect(screen.getAllByText('Service Mesh (Istio, Linkerd, Consul)', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('Azure Security (alternatives: AWS Security Hub/GuardDuty)', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('CI/CD & SCM (alternatives: GitLab CI, CircleCI, Flux CD)', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('AI DevOps Tools', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('DevSecOps', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('Scripting (alternative: PowerShell)', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('System Design', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('Azure Solutions Architect', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('Platform Engineering', { selector: 'h2' }).length).toBe(1)
+    expect(screen.getAllByText('SRE', { selector: 'h2' }).length).toBe(1)
   })
 
-  it('adds a new top-level topic', async () => {
+  it('adds a new section (top-level topic)', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...'))
-    const input = screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...')
-    fireEvent.change(input, { target: { value: 'Kubernetes' } })
+    await waitFor(() => screen.getByPlaceholderText('Add a new section (e.g. Kubernetes)...'))
+    const input = screen.getByPlaceholderText('Add a new section (e.g. Kubernetes)...')
+    fireEvent.change(input, { target: { value: 'New Section XYZ' } })
     fireEvent.click(screen.getByText('Add', { selector: '.add-row button' }))
-    await waitFor(() => expect(screen.getByText('Kubernetes')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('New Section XYZ', { selector: 'h2' }).length).toBe(1))
   })
 
   it('adds a sub-topic under an existing topic', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => screen.getByText('Docker (alternatives: Podman, containerd, rkt)'))
-    const dockerRow = screen.getByText('Docker (alternatives: Podman, containerd, rkt)').closest('.study-flow-node')
+    await waitFor(() => screen.getByTitle('Docker (alternatives: Podman, containerd, rkt)'))
+    const dockerRow = screen.getByTitle('Docker (alternatives: Podman, containerd, rkt)').closest('.study-flow-node')
     fireEvent.click(within(dockerRow).getByTitle('Add sub-topic'))
     const childInput = screen.getByPlaceholderText('New sub-topic...')
     fireEvent.change(childInput, { target: { value: 'Networking Drivers' } })
@@ -148,21 +155,21 @@ describe('Study Tracking tab', () => {
   it('renames a topic', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => screen.getByText('Linux'))
-    const linuxRow = screen.getByText('Linux').closest('.study-flow-node')
+    await waitFor(() => screen.getByTitle('Linux'))
+    const linuxRow = screen.getByTitle('Linux').closest('.study-flow-node')
     fireEvent.click(within(linuxRow).getByTitle('Rename'))
     const editInput = screen.getByDisplayValue('Linux')
     fireEvent.change(editInput, { target: { value: 'Linux Fundamentals' } })
     fireEvent.click(screen.getByText('✓'))
-    await waitFor(() => expect(screen.getByText('Linux Fundamentals')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTitle('Linux Fundamentals')).toBeInTheDocument())
   })
 
   it('collapses a topic so its children are hidden, then expands it again', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => screen.getByText('Docker (alternatives: Podman, containerd, rkt)'))
+    await waitFor(() => screen.getByTitle('Docker (alternatives: Podman, containerd, rkt)'))
     expect(screen.getByText('Multistage builds')).toBeInTheDocument()
-    const dockerRow = screen.getByText('Docker (alternatives: Podman, containerd, rkt)').closest('.study-flow-node')
+    const dockerRow = screen.getByTitle('Docker (alternatives: Podman, containerd, rkt)').closest('.study-flow-node')
     fireEvent.click(within(dockerRow).getByText('▾'))
     await waitFor(() => expect(screen.queryByText('Multistage builds')).not.toBeInTheDocument())
     fireEvent.click(within(dockerRow).getByText('▸'))
@@ -172,11 +179,11 @@ describe('Study Tracking tab', () => {
   it('deletes a topic and its sub-topics', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => screen.getByText('Docker (alternatives: Podman, containerd, rkt)'))
-    const dockerRow = screen.getByText('Docker (alternatives: Podman, containerd, rkt)').closest('.study-flow-node')
+    await waitFor(() => screen.getByTitle('Docker (alternatives: Podman, containerd, rkt)'))
+    const dockerRow = screen.getByTitle('Docker (alternatives: Podman, containerd, rkt)').closest('.study-flow-node')
     fireEvent.click(within(dockerRow).getByTitle('Delete'))
     await waitFor(() =>
-      expect(screen.queryByText('Docker (alternatives: Podman, containerd, rkt)')).not.toBeInTheDocument(),
+      expect(screen.queryByTitle('Docker (alternatives: Podman, containerd, rkt)')).not.toBeInTheDocument(),
     )
     expect(screen.queryByText('Multistage builds')).not.toBeInTheDocument()
   })
@@ -184,14 +191,14 @@ describe('Study Tracking tab', () => {
   it('reset restores default topics after a custom add', async () => {
     await unlockApp()
     clickMainTab('Study Tracking')
-    await waitFor(() => screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...'))
-    const input = screen.getByPlaceholderText('Add a new top-level topic (e.g. Kubernetes)...')
+    await waitFor(() => screen.getByPlaceholderText('Add a new section (e.g. Kubernetes)...'))
+    const input = screen.getByPlaceholderText('Add a new section (e.g. Kubernetes)...')
     fireEvent.change(input, { target: { value: 'Custom Topic XYZ' } })
     fireEvent.click(screen.getByText('Add', { selector: '.add-row button' }))
-    await waitFor(() => expect(screen.getByText('Custom Topic XYZ')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Custom Topic XYZ', { selector: 'h2' }).length).toBe(1))
     fireEvent.click(screen.getByText('⟲ Reset to defaults'))
     await waitFor(() => expect(screen.queryByText('Custom Topic XYZ')).not.toBeInTheDocument())
-    expect(screen.getByText('Linux')).toBeInTheDocument()
+    expect(screen.getByTitle('Linux')).toBeInTheDocument()
   })
 })
 
@@ -199,24 +206,46 @@ describe('Projects tab', () => {
   it('shows alert when saving without a name', async () => {
     await unlockApp()
     clickMainTab('Projects')
-    await waitFor(() => screen.getByText('Save Project'))
+    await waitFor(() => screen.getByText('+ Add Project'))
+    fireEvent.click(screen.getByText('+ Add Project'))
+    await waitFor(() => screen.getByText('New Project'))
     fireEvent.click(screen.getByText('Save Project'))
     expect(global.alert).toHaveBeenCalledWith('Give the project a name first.')
   })
 
-  it('saves a project and shows it as a card', async () => {
+  it('saves a project via the add modal and shows it as a card', async () => {
     await unlockApp()
     clickMainTab('Projects')
+    await waitFor(() => screen.getByText('+ Add Project'))
+    fireEvent.click(screen.getByText('+ Add Project'))
     await waitFor(() => screen.getByText('New Project'))
     const nameInput = screen.getByPlaceholderText('Project name...')
     fireEvent.change(nameInput, { target: { value: 'Test Project' } })
     fireEvent.click(screen.getByText('Save Project'))
     await waitFor(() => expect(screen.getByText('Test Project')).toBeInTheDocument())
+    expect(screen.queryByText('New Project')).not.toBeInTheDocument()
+  })
+
+  it('captures architecture detail as plain text', async () => {
+    await unlockApp()
+    clickMainTab('Projects')
+    await waitFor(() => screen.getByText('+ Add Project'))
+    fireEvent.click(screen.getByText('+ Add Project'))
+    await waitFor(() => screen.getByPlaceholderText('Project name...'))
+    fireEvent.change(screen.getByPlaceholderText('Project name...'), { target: { value: 'Arch Project' } })
+    // Modal field order: Name, Description, Tools Used, Concepts Covered, Architecture Detail.
+    const fields = screen.getAllByRole('textbox')
+    fireEvent.change(fields[4], { target: { value: 'Client -> API -> DB' } })
+    fireEvent.click(screen.getByText('Save Project'))
+    await waitFor(() => screen.getByText('Arch Project'))
+    expect(screen.getByText(/Client -> API -> DB/)).toBeInTheDocument()
   })
 
   it('modify then save changes updates the title', async () => {
     await unlockApp()
     clickMainTab('Projects')
+    await waitFor(() => screen.getByText('+ Add Project'))
+    fireEvent.click(screen.getByText('+ Add Project'))
     await waitFor(() => screen.getByPlaceholderText('Project name...'))
     fireEvent.change(screen.getByPlaceholderText('Project name...'), { target: { value: 'Original Name' } })
     fireEvent.click(screen.getByText('Save Project'))
@@ -232,6 +261,8 @@ describe('Projects tab', () => {
   it('delete removes the project', async () => {
     await unlockApp()
     clickMainTab('Projects')
+    await waitFor(() => screen.getByText('+ Add Project'))
+    fireEvent.click(screen.getByText('+ Add Project'))
     await waitFor(() => screen.getByPlaceholderText('Project name...'))
     fireEvent.change(screen.getByPlaceholderText('Project name...'), { target: { value: 'ToDelete' } })
     fireEvent.click(screen.getByText('Save Project'))
@@ -242,15 +273,18 @@ describe('Projects tab', () => {
 })
 
 describe('Jobs tab', () => {
-  it('saves a dream company', async () => {
+  it('saves a dream company via the add modal', async () => {
     await unlockApp()
     clickMainTab('Jobs')
+    await waitFor(() => screen.getByText('+ Add Company'))
+    fireEvent.click(screen.getByText('+ Add Company'))
     await waitFor(() => screen.getByText('New Dream Company'))
     const companyInputs = screen.getAllByRole('textbox')
-    // First text input in the add-zone grid is Company
+    // First text input in the modal's company grid is Company
     fireEvent.change(companyInputs[0], { target: { value: 'Google' } })
     fireEvent.click(screen.getByText('Save Company'))
     await waitFor(() => expect(screen.getByText('Google')).toBeInTheDocument())
+    expect(screen.queryByText('New Dream Company')).not.toBeInTheDocument()
   })
 
   it('adds a freelance lead', async () => {

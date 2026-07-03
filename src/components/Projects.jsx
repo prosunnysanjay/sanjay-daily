@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { storageGet, storageSet, STORAGE_KEYS } from '../lib/supabase'
 import { uid, escapeHtml, dragHandlers, reorderArray, makeUndoStack } from '../lib/utils'
+import Modal from './Modal'
 
 const undoStack = makeUndoStack(20)
+const BLANK_PROJECT = { name: '', description: '', tools: '', concepts: '', architecture: '' }
 
 export default function Projects({ flashSaved }) {
   const [data, setData] = useState(null)
   const [editingId, setEditingId] = useState(null)
-  const [newProj, setNewProj] = useState({ name: '', description: '', tools: '', concepts: '', image: null })
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newProj, setNewProj] = useState({ ...BLANK_PROJECT })
 
   useEffect(() => {
     load()
@@ -46,11 +49,13 @@ export default function Projects({ flashSaved }) {
 
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
-  function handleNewImageFile(file) {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setNewProj((prev) => ({ ...prev, image: ev.target.result }))
-    reader.readAsDataURL(file)
+  function openAddModal() {
+    setNewProj({ ...BLANK_PROJECT })
+    setShowAddModal(true)
+  }
+
+  function closeAddModal() {
+    setShowAddModal(false)
   }
 
   function saveNewProject() {
@@ -61,7 +66,8 @@ export default function Projects({ flashSaved }) {
     update((d) => {
       d.projects.push({ id: uid('proj'), ...newProj })
     })
-    setNewProj({ name: '', description: '', tools: '', concepts: '', image: null })
+    setNewProj({ ...BLANK_PROJECT })
+    setShowAddModal(false)
   }
 
   function deleteProject(id, name) {
@@ -118,72 +124,75 @@ export default function Projects({ flashSaved }) {
         <button className="btn-outline" onClick={handleUndo}>
           ↺ Undo
         </button>
+        <button className="add-trigger-btn" onClick={openAddModal}>
+          + Add Project
+        </button>
       </div>
 
-      <div className="add-zone">
-        <h2 style={{ margin: '6px 0 4px' }}>New Project</h2>
-        <div className="project-field">
-          <label className="field-label">Project Name</label>
-          <input
-            type="text"
-            className="text-input"
-            value={newProj.name}
-            onChange={(e) => setNewProj((p) => ({ ...p, name: e.target.value }))}
-            placeholder="Project name..."
-          />
-        </div>
-        <div className="project-field">
-          <label className="field-label">Description</label>
-          <textarea
-            className="ginput"
-            rows={3}
-            value={newProj.description}
-            onChange={(e) => setNewProj((p) => ({ ...p, description: e.target.value }))}
-          />
-        </div>
-        <div className="project-field">
-          <label className="field-label">Tools Used</label>
-          <textarea
-            className="ginput"
-            rows={2}
-            value={newProj.tools}
-            onChange={(e) => setNewProj((p) => ({ ...p, tools: e.target.value }))}
-          />
-        </div>
-        <div className="project-field">
-          <label className="field-label">Concepts Covered</label>
-          <textarea
-            className="ginput"
-            rows={2}
-            value={newProj.concepts}
-            onChange={(e) => setNewProj((p) => ({ ...p, concepts: e.target.value }))}
-          />
-        </div>
-        <div className="project-field">
-          <label className="field-label">Architecture Image</label>
-          <div className="project-img-wrap">
-            {newProj.image && <img src={newProj.image} alt="architecture preview" />}
-            <input type="file" accept="image/*" onChange={(e) => handleNewImageFile(e.target.files[0])} />
-            {newProj.image && (
-              <div>
-                <span
-                  style={{ fontSize: '11px', color: 'var(--ink-soft)', textDecoration: 'underline', cursor: 'pointer' }}
-                  onClick={() => setNewProj((p) => ({ ...p, image: null }))}
-                >
-                  Remove image
-                </span>
-              </div>
-            )}
+      {showAddModal && (
+        <Modal title="New Project" onClose={closeAddModal}>
+          <div className="project-field">
+            <label className="field-label">Project Name</label>
+            <input
+              type="text"
+              className="text-input"
+              value={newProj.name}
+              onChange={(e) => setNewProj((p) => ({ ...p, name: e.target.value }))}
+              placeholder="Project name..."
+            />
           </div>
-        </div>
-        <div className="add-zone-save-row">
-          <button className="btn" onClick={saveNewProject}>
-            Save Project
-          </button>
-        </div>
-      </div>
+          <div className="project-field">
+            <label className="field-label">Description</label>
+            <textarea
+              className="ginput"
+              rows={3}
+              value={newProj.description}
+              onChange={(e) => setNewProj((p) => ({ ...p, description: e.target.value }))}
+            />
+          </div>
+          <div className="project-field">
+            <label className="field-label">Tools Used</label>
+            <textarea
+              className="ginput"
+              rows={2}
+              value={newProj.tools}
+              onChange={(e) => setNewProj((p) => ({ ...p, tools: e.target.value }))}
+            />
+          </div>
+          <div className="project-field">
+            <label className="field-label">Concepts Covered</label>
+            <textarea
+              className="ginput"
+              rows={2}
+              value={newProj.concepts}
+              onChange={(e) => setNewProj((p) => ({ ...p, concepts: e.target.value }))}
+            />
+          </div>
+          <div className="project-field">
+            <label className="field-label">Architecture Detail</label>
+            <textarea
+              className="ginput"
+              rows={3}
+              value={newProj.architecture}
+              onChange={(e) => setNewProj((p) => ({ ...p, architecture: e.target.value }))}
+            />
+          </div>
+          <div className="add-zone-save-row">
+            <button className="btn-outline" onClick={closeAddModal}>
+              Cancel
+            </button>
+            <button className="btn" onClick={saveNewProject}>
+              Save Project
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {data.projects.length > 0 && <div className="saved-entries-label">Saved Projects</div>}
+
+      {data.projects.length === 0 && (
+        <div className="empty-state-sm">No projects yet — tap "+ Add Project" above.</div>
+      )}
 
       {data.projects.map((proj, idx) =>
         editingId === proj.id ? (
@@ -225,16 +234,16 @@ function ProjectViewCard({ proj, index, onModify, onDelete, onReorder }) {
                     ? escapeHtml(proj.description.slice(0, 120)) + (proj.description.length > 120 ? '…' : '')
                     : '',
                   proj.tools ? '<strong>Tools:</strong> ' + escapeHtml(proj.tools.slice(0, 80)) : '',
+                  proj.architecture
+                    ? '<strong>Architecture:</strong> ' +
+                      escapeHtml(proj.architecture.slice(0, 120)) +
+                      (proj.architecture.length > 120 ? '…' : '')
+                    : '',
                 ]
                   .filter(Boolean)
                   .join('<br>') || '<em>No description yet</em>',
             }}
           />
-          {proj.image && (
-            <div style={{ marginTop: '8px' }}>
-              <img src={proj.image} alt="" style={{ maxWidth: '160px', maxHeight: '100px', borderRadius: '6px' }} />
-            </div>
-          )}
         </div>
         <div className="saved-card-actions">
           <button onClick={onModify}>✎ Modify</button>
@@ -270,31 +279,13 @@ function ProjectEditCard({ proj, onPatch, onCancel, onSave }) {
         <textarea className="ginput" rows={3} value={proj.concepts || ''} onChange={(e) => onPatch({ concepts: e.target.value })} />
       </div>
       <div className="project-field">
-        <label className="field-label">Architecture Image</label>
-        <div className="project-img-wrap">
-          {proj.image && <img src={proj.image} alt="" />}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files[0]
-              if (!file) return
-              const reader = new FileReader()
-              reader.onload = (ev) => onPatch({ image: ev.target.result })
-              reader.readAsDataURL(file)
-            }}
-          />
-          {proj.image && (
-            <div>
-              <span
-                style={{ fontSize: '11px', color: 'var(--ink-soft)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => onPatch({ image: null })}
-              >
-                Remove image
-              </span>
-            </div>
-          )}
-        </div>
+        <label className="field-label">Architecture Detail</label>
+        <textarea
+          className="ginput"
+          rows={3}
+          value={proj.architecture || ''}
+          onChange={(e) => onPatch({ architecture: e.target.value })}
+        />
       </div>
       <div className="add-zone-save-row">
         <button className="btn-outline" onClick={onCancel}>

@@ -4,7 +4,6 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
-  MiniMap,
   Handle,
   Position,
   useNodesState,
@@ -308,44 +307,41 @@ function moveTopic(draft, draggedId, targetId, position) {
 }
 
 // ---- Radial/branching mindmap rendering (React Flow + d3-hierarchy for layout) ----
+// Each top-level topic gets its own independent mini-mindmap canvas (its own
+// ReactFlowProvider), rooted at that topic itself rather than one shared root.
 
-const ROOT_ID = '__study_root__'
 const PLACEHOLDER_ID = '__add_placeholder__'
 const NODE_WIDTH = 230
 const NODE_HEIGHT = 40
 const V_GAP = 14
 const H_GAP = 90
 
-function buildLayout(topics, addingChildOf) {
-  let sourceTopics = topics
+function buildLayoutForTopic(topic, addingChildOf) {
+  let sourceTopic = topic
   if (addingChildOf) {
-    const clone = structuredClone(topics)
-    const loc = locateNode(clone, addingChildOf)
+    const clone = structuredClone(topic)
+    const loc = locateNode([clone], addingChildOf)
     if (loc) {
       loc.node.expanded = true
       loc.node.children = loc.node.children || []
       loc.node.children.push({ id: PLACEHOLDER_ID, name: '', isPlaceholder: true, expanded: false, children: [] })
     }
-    sourceTopics = clone
+    sourceTopic = clone
   }
 
-  const rootData = { id: ROOT_ID, name: 'Study Topics', isRoot: true, expanded: true, children: sourceTopics }
-  const root = hierarchy(rootData, (d) => (d.expanded && d.children && d.children.length ? d.children : undefined))
+  const root = hierarchy(sourceTopic, (d) => (d.expanded && d.children && d.children.length ? d.children : undefined))
   const layout = d3tree().nodeSize([NODE_HEIGHT + V_GAP, NODE_WIDTH + H_GAP])
   layout(root)
   return root
 }
 
-function buildFlow(topics, ctx) {
-  const root = buildLayout(topics, ctx.addingChildOf)
+function buildFlowForTopic(topic, ctx) {
+  const root = buildLayoutForTopic(topic, ctx.addingChildOf)
   const descendants = root.descendants()
 
   const nodes = descendants.map((d) => {
     const t = d.data
     const position = { x: d.y, y: d.x }
-    if (t.isRoot) {
-      return { id: t.id, type: 'rootNode', position, data: { name: t.name }, draggable: false, selectable: false }
-    }
     if (t.isPlaceholder) {
       return {
         id: t.id,
@@ -362,15 +358,18 @@ function buildFlow(topics, ctx) {
       }
     }
     const hasChildren = !!(t.children && t.children.length)
+    const isRoot = t.id === topic.id
     return {
       id: t.id,
       type: 'topicNode',
       position,
       dragHandle: '.study-drag-handle',
+      draggable: !isRoot,
       data: {
         name: t.name,
         hasChildren,
         expanded: !!t.expanded,
+        isRoot,
         isEditing: ctx.editingId === t.id,
         editText: ctx.editingText,
         onToggleExpand: ctx.onToggleExpand,
@@ -395,21 +394,10 @@ function buildFlow(topics, ctx) {
   return { nodes, edges }
 }
 
-function RootNode({ data }) {
-  return (
-    <div className="study-flow-node study-flow-root-node">
-      <div className="study-flow-node-inner">
-        <span className="study-flow-name">{data.name}</span>
-      </div>
-      <Handle type="source" position={Position.Right} className="study-flow-handle" />
-    </div>
-  )
-}
-
 function TopicNode({ id, data }) {
-  const { name, hasChildren, expanded, isEditing, editText } = data
+  const { name, hasChildren, expanded, isEditing, editText, isRoot } = data
   return (
-    <div className="study-flow-node" data-topic-id={id}>
+    <div className={`study-flow-node ${isRoot ? 'is-root' : ''}`} data-topic-id={id}>
       <Handle type="target" position={Position.Left} className="study-flow-handle" />
       <div className="study-flow-node-inner">
         <span className="study-drag-handle" title="Drag to move">
@@ -495,7 +483,7 @@ function AddChildNode({ data }) {
   )
 }
 
-const nodeTypes = { rootNode: RootNode, topicNode: TopicNode, addChildNode: AddChildNode }
+const nodeTypes = { topicNode: TopicNode, addChildNode: AddChildNode }
 
 function clearDropHighlight(container) {
   if (!container) return
@@ -515,7 +503,7 @@ function findDropTarget(layoutNodesById, draggedId, draggedPosition, topics) {
   let best = null
   let bestArea = 0
   for (const [id, pos] of layoutNodesById) {
-    if (id === draggedId || id === ROOT_ID) continue
+    if (id === draggedId) continue
     if (isDescendant(draggedLoc.node, id)) continue
     const left = pos.x
     const top = pos.y
@@ -538,7 +526,107 @@ function findDropTarget(layoutNodesById, draggedId, draggedPosition, topics) {
   return best
 }
 
-function StudyTrackingCanvas({ flashSaved }) {
+function TopicMindmapCanvas({ topic, editingId, editingText, addingChildOf, addingChildText, callbacks, onMoveTopic }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const containerRef = useRef(null)
+  const layoutNodesRef = useRef(new Map())
+  const topicRef = useRef(topic)
+  const didInitialFit = useRef(false)
+  const { fitView } = useReactFlow()
+
+  useEffect(() => {
+    topicRef.current = topic
+  }, [topic])
+
+  useEffect(() => {
+    const { nodes: flowNodes, edges: flowEdges } = buildFlowForTopic(topic, {
+      editingId,
+      editingText,
+      addingChildOf,
+      addingChildText,
+      ...callbacks,
+    })
+    layoutNodesRef.current = new Map(flowNodes.map((n) => [n.id, n.position]))
+    setNodes(flowNodes)
+    setEdges(flowEdges)
+    if (!didInitialFit.current) {
+      didInitialFit.current = true
+      setTimeout(() => fitView({ padding: 0.2, duration: 0, minZoom: 0.5, maxZoom: 1 }), 30)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topic, editingId, editingText, addingChildOf, addingChildText])
+
+  function handleNodeDrag(event, node) {
+    if (node.type !== 'topicNode') return
+    const target = findDropTarget(layoutNodesRef.current, node.id, node.position, [topicRef.current])
+    clearDropHighlight(containerRef.current)
+    if (target && containerRef.current) {
+      const el = containerRef.current.querySelector(`[data-topic-id="${target.id}"]`)
+      if (el) el.closest('.study-flow-node')?.classList.add(`is-drop-${target.position}`)
+    }
+  }
+
+  function handleNodeDragStop(event, node) {
+    clearDropHighlight(containerRef.current)
+    if (node.type !== 'topicNode') return
+    const target = findDropTarget(layoutNodesRef.current, node.id, node.position, [topicRef.current])
+    if (target) {
+      onMoveTopic(node.id, target.id, target.position)
+    } else {
+      const { nodes: flowNodes } = buildFlowForTopic(topicRef.current, {
+        editingId,
+        editingText,
+        addingChildOf,
+        addingChildText,
+        ...callbacks,
+      })
+      setNodes(flowNodes)
+    }
+  }
+
+  return (
+    <div className="study-flow-wrap" ref={containerRef}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeDrag={handleNodeDrag}
+        onNodeDragStop={handleNodeDragStop}
+        nodeTypes={nodeTypes}
+        proOptions={{ hideAttribution: true }}
+        fitView
+        fitViewOptions={{ padding: 0.2, minZoom: 0.5, maxZoom: 1 }}
+        minZoom={0.15}
+        maxZoom={1.5}
+        nodesConnectable={false}
+      >
+        <Background gap={20} size={1} />
+        <Controls showInteractive={false} />
+      </ReactFlow>
+    </div>
+  )
+}
+
+function TopicMindmapCard({ topic, ...rest }) {
+  const childCount = countTopics(topic.children || [])
+  return (
+    <div className="gcard study-section-card">
+      <div className="study-section-head">
+        <h2>{topic.name}</h2>
+        <div className="gsub">
+          {childCount} sub-topic{childCount === 1 ? '' : 's'}
+        </div>
+      </div>
+      <ReactFlowProvider>
+        <TopicMindmapCanvas topic={topic} {...rest} />
+      </ReactFlowProvider>
+    </div>
+  )
+}
+
+export default function StudyTracking({ flashSaved }) {
   const [data, setData] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editingText, setEditingText] = useState('')
@@ -546,13 +634,7 @@ function StudyTrackingCanvas({ flashSaved }) {
   const [addingChildText, setAddingChildText] = useState('')
   const [newTopicName, setNewTopicName] = useState('')
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
-
   const dataRef = useRef(null)
-  const containerRef = useRef(null)
-  const layoutNodesRef = useRef(new Map())
-  const { fitView } = useReactFlow()
 
   useEffect(() => {
     load()
@@ -593,36 +675,6 @@ function StudyTrackingCanvas({ flashSaved }) {
     })
   }
 
-  function recomputeFlow(topicsForLayout) {
-    const { nodes: flowNodes, edges: flowEdges } = buildFlow(topicsForLayout, {
-      editingId,
-      editingText,
-      addingChildOf,
-      addingChildText,
-      onToggleExpand: handleToggleExpand,
-      onStartEdit: startEdit,
-      onEditTextChange: setEditingText,
-      onCommitEdit: commitEdit,
-      onCancelEdit: cancelEdit,
-      onStartAddChild: startAddChild,
-      onDelete: handleDelete,
-      onAddChildTextChange: setAddingChildText,
-      onCommitAddChild: commitAddChild,
-      onCancelAddChild: cancelAddChild,
-    })
-    const byId = new Map(flowNodes.map((n) => [n.id, n.position]))
-    layoutNodesRef.current = byId
-    setNodes(flowNodes)
-    setEdges(flowEdges)
-    return flowNodes
-  }
-
-  useEffect(() => {
-    if (!data) return
-    recomputeFlow(data.topics)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, editingId, editingText, addingChildOf, addingChildText])
-
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   function handleUndo() {
@@ -643,7 +695,6 @@ function StudyTrackingCanvas({ flashSaved }) {
     const next = defaultData()
     setData(next)
     persist(next)
-    setTimeout(() => fitView({ padding: 0.15, duration: 300, minZoom: 0.6, maxZoom: 1 }), 50)
   }
 
   function handleAddRootTopic() {
@@ -701,36 +752,30 @@ function StudyTrackingCanvas({ flashSaved }) {
 
   function handleExpandAll(value) {
     update((d) => setAllExpanded(d, value), { snapshot: false })
-    setTimeout(() => fitView({ padding: 0.15, duration: 300, minZoom: 0.6, maxZoom: 1 }), 50)
   }
 
-  function handleNodeDrag(event, node) {
-    if (node.id === ROOT_ID || node.type !== 'topicNode') return
-    const target = findDropTarget(layoutNodesRef.current, node.id, node.position, dataRef.current.topics)
-    clearDropHighlight(containerRef.current)
-    if (target && containerRef.current) {
-      const el = containerRef.current.querySelector(`[data-topic-id="${target.id}"]`)
-      if (el) el.closest('.study-flow-node')?.classList.add(`is-drop-${target.position}`)
-    }
-  }
-
-  function handleNodeDragStop(event, node) {
-    clearDropHighlight(containerRef.current)
-    if (node.id === ROOT_ID || node.type !== 'topicNode') return
-    const target = findDropTarget(layoutNodesRef.current, node.id, node.position, dataRef.current.topics)
-    if (target) {
-      const next = structuredClone(dataRef.current)
-      moveTopic(next, node.id, target.id, target.position)
-      undoStack.push(dataRef.current)
-      setData(next)
-      persist(next)
-      recomputeFlow(next.topics)
-    } else {
-      recomputeFlow(dataRef.current.topics)
-    }
+  function handleMoveTopic(draggedId, targetId, position) {
+    const next = structuredClone(dataRef.current)
+    moveTopic(next, draggedId, targetId, position)
+    undoStack.push(dataRef.current)
+    setData(next)
+    persist(next)
   }
 
   const topicCount = countTopics(data.topics)
+
+  const callbacks = {
+    onToggleExpand: handleToggleExpand,
+    onStartEdit: startEdit,
+    onEditTextChange: setEditingText,
+    onCommitEdit: commitEdit,
+    onCancelEdit: cancelEdit,
+    onStartAddChild: startAddChild,
+    onDelete: handleDelete,
+    onAddChildTextChange: setAddingChildText,
+    onCommitAddChild: commitAddChild,
+    onCancelAddChild: cancelAddChild,
+  }
 
   return (
     <div>
@@ -752,51 +797,37 @@ function StudyTrackingCanvas({ flashSaved }) {
       <div className="gcard">
         <h2>Study Mindmap</h2>
         <div className="gsub">
-          {topicCount} topic{topicCount === 1 ? '' : 's'} tracked. Drag a topic onto another to nest it as a
-          sub-topic; drop near the top or bottom edge of a topic to reorder it as a sibling instead.
+          {topicCount} topic{topicCount === 1 ? '' : 's'} across {data.topics.length} section
+          {data.topics.length === 1 ? '' : 's'}. Each section below is its own mindmap — drag a topic onto another
+          within the same section to nest it, or near the top/bottom edge to reorder it as a sibling.
         </div>
 
-        <div className="add-row" style={{ marginBottom: '14px' }}>
+        <div className="add-row">
           <input
             type="text"
-            placeholder="Add a new top-level topic (e.g. Kubernetes)..."
+            placeholder="Add a new section (e.g. Kubernetes)..."
             value={newTopicName}
             onChange={(e) => setNewTopicName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddRootTopic()}
           />
           <button onClick={handleAddRootTopic}>Add</button>
         </div>
-
-        <div className="study-flow-wrap" ref={containerRef}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeDrag={handleNodeDrag}
-            onNodeDragStop={handleNodeDragStop}
-            nodeTypes={nodeTypes}
-            proOptions={{ hideAttribution: true }}
-            fitView
-            fitViewOptions={{ padding: 0.15, minZoom: 0.6, maxZoom: 1 }}
-            minZoom={0.15}
-            maxZoom={1.5}
-            nodesConnectable={false}
-          >
-            <Background gap={20} size={1} />
-            <Controls showInteractive={false} />
-            <MiniMap pannable zoomable />
-          </ReactFlow>
-        </div>
       </div>
-    </div>
-  )
-}
 
-export default function StudyTracking(props) {
-  return (
-    <ReactFlowProvider>
-      <StudyTrackingCanvas {...props} />
-    </ReactFlowProvider>
+      {data.topics.length === 0 && <div className="empty-state-sm">No sections yet — add your first one above.</div>}
+
+      {data.topics.map((topic) => (
+        <TopicMindmapCard
+          key={topic.id}
+          topic={topic}
+          editingId={editingId}
+          editingText={editingText}
+          addingChildOf={addingChildOf}
+          addingChildText={addingChildText}
+          callbacks={callbacks}
+          onMoveTopic={handleMoveTopic}
+        />
+      ))}
+    </div>
   )
 }

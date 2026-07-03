@@ -865,10 +865,19 @@ input[type='checkbox'] {
   display: inline-block;
 }
 
-/* ---- STUDY TRACKING (radial mindmap canvas) ---- */
+/* ---- STUDY TRACKING (one mindmap per section) ---- */
+.study-section-card {
+  padding-top: 12px;
+}
+.study-section-head {
+  margin-bottom: 8px;
+}
+.study-section-head h2 {
+  font-size: 13.5px;
+}
+
 .study-flow-wrap {
-  height: 72vh;
-  min-height: 520px;
+  height: 340px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
@@ -893,11 +902,6 @@ input[type='checkbox'] {
 }
 .study-flow-wrap .react-flow__controls-button:hover {
   background: var(--accent-soft);
-}
-.study-flow-wrap .react-flow__minimap {
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
 }
 .study-flow-wrap .react-flow__attribution {
   display: none;
@@ -934,15 +938,24 @@ input[type='checkbox'] {
   border-color: var(--accent);
   border-style: dashed;
 }
-.study-flow-root-node .study-flow-node-inner {
+.study-flow-node.is-root .study-flow-node-inner {
   background: var(--ink);
   border-color: var(--ink);
-  justify-content: center;
-  padding: 10px 18px;
+  padding: 8px 12px;
 }
-.study-flow-root-node .study-flow-name {
+.study-flow-node.is-root .study-flow-name {
   color: #fff;
   font-weight: 700;
+}
+.study-flow-node.is-root .study-flow-caret {
+  color: #fff;
+}
+.study-flow-node.is-root .study-flow-actions button {
+  color: rgba(255, 255, 255, 0.75);
+}
+.study-flow-node.is-root .study-flow-actions button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
 }
 .study-flow-add-node .study-flow-node-inner {
   border-style: dashed;
@@ -1050,6 +1063,68 @@ input[type='checkbox'] {
 }
 .save-pill.show {
   opacity: 0.88;
+}
+
+/* ---- MODAL ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 39, 36, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+.modal-box {
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 30px rgba(43, 39, 36, 0.25);
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.modal-head h2 {
+  font-size: 15px;
+  margin: 0;
+}
+.modal-close {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 4px 8px;
+}
+.modal-close:hover {
+  color: var(--bad);
+}
+.modal-body {
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+}
+.add-trigger-btn {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 7px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-trigger-btn:hover {
+  opacity: 0.92;
 }
 
 footer {

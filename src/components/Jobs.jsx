@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { storageGet, storageSet, STORAGE_KEYS } from '../lib/supabase'
 import { uid, escapeHtml, dragHandlers, reorderArray, makeUndoStack } from '../lib/utils'
+import Modal from './Modal'
 
 const undoStack = makeUndoStack(20)
 const BLANK_CO = { company: '', role: '', link: '', notes: '', jd: '', steps: '' }
@@ -8,6 +9,7 @@ const BLANK_CO = { company: '', role: '', link: '', notes: '', jd: '', steps: ''
 export default function Jobs({ flashSaved }) {
   const [data, setData] = useState(null)
   const [editingId, setEditingId] = useState(null)
+  const [showAddModal, setShowAddModal] = useState(false)
   const [newCo, setNewCo] = useState({ ...BLANK_CO })
   const [flName, setFlName] = useState('')
   const [flLink, setFlLink] = useState('')
@@ -49,6 +51,15 @@ export default function Jobs({ flashSaved }) {
 
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
+  function openAddModal() {
+    setNewCo({ ...BLANK_CO })
+    setShowAddModal(true)
+  }
+
+  function closeAddModal() {
+    setShowAddModal(false)
+  }
+
   function saveNewCompany() {
     if (!newCo.company.trim()) {
       alert('Give the company a name first.')
@@ -56,6 +67,7 @@ export default function Jobs({ flashSaved }) {
     }
     update((d) => d.companies.push({ id: uid('co'), ...newCo }))
     setNewCo({ ...BLANK_CO })
+    setShowAddModal(false)
   }
 
   function deleteCompany(id, name) {
@@ -134,44 +146,55 @@ export default function Jobs({ flashSaved }) {
         <button className="btn-outline" onClick={handleUndo}>
           ↺ Undo
         </button>
+        <button className="add-trigger-btn" onClick={openAddModal}>
+          + Add Company
+        </button>
       </div>
 
-      <div className="add-zone">
-        <h2 style={{ margin: '6px 0 4px' }}>New Dream Company</h2>
-        <div className="company-grid">
-          <div className="project-field">
-            <label className="field-label">Company</label>
-            <input className="text-input" value={newCo.company} onChange={(e) => setNewCo((c) => ({ ...c, company: e.target.value }))} />
+      {showAddModal && (
+        <Modal title="New Dream Company" onClose={closeAddModal}>
+          <div className="company-grid">
+            <div className="project-field">
+              <label className="field-label">Company</label>
+              <input className="text-input" value={newCo.company} onChange={(e) => setNewCo((c) => ({ ...c, company: e.target.value }))} />
+            </div>
+            <div className="project-field">
+              <label className="field-label">Target Role</label>
+              <input className="text-input" value={newCo.role} onChange={(e) => setNewCo((c) => ({ ...c, role: e.target.value }))} />
+            </div>
+            <div className="project-field">
+              <label className="field-label">Link</label>
+              <input className="text-input" value={newCo.link} onChange={(e) => setNewCo((c) => ({ ...c, link: e.target.value }))} />
+            </div>
+            <div className="project-field">
+              <label className="field-label">Notes</label>
+              <input className="text-input" value={newCo.notes} onChange={(e) => setNewCo((c) => ({ ...c, notes: e.target.value }))} />
+            </div>
           </div>
           <div className="project-field">
-            <label className="field-label">Target Role</label>
-            <input className="text-input" value={newCo.role} onChange={(e) => setNewCo((c) => ({ ...c, role: e.target.value }))} />
+            <label className="field-label">Job Description (notes)</label>
+            <textarea className="ginput" rows={3} value={newCo.jd} onChange={(e) => setNewCo((c) => ({ ...c, jd: e.target.value }))} />
           </div>
           <div className="project-field">
-            <label className="field-label">Link</label>
-            <input className="text-input" value={newCo.link} onChange={(e) => setNewCo((c) => ({ ...c, link: e.target.value }))} />
+            <label className="field-label">Steps to Reach There</label>
+            <textarea className="ginput" rows={3} value={newCo.steps} onChange={(e) => setNewCo((c) => ({ ...c, steps: e.target.value }))} />
           </div>
-          <div className="project-field">
-            <label className="field-label">Notes</label>
-            <input className="text-input" value={newCo.notes} onChange={(e) => setNewCo((c) => ({ ...c, notes: e.target.value }))} />
+          <div className="add-zone-save-row">
+            <button className="btn-outline" onClick={closeAddModal}>
+              Cancel
+            </button>
+            <button className="btn" onClick={saveNewCompany}>
+              Save Company
+            </button>
           </div>
-        </div>
-        <div className="project-field">
-          <label className="field-label">Job Description (notes)</label>
-          <textarea className="ginput" rows={3} value={newCo.jd} onChange={(e) => setNewCo((c) => ({ ...c, jd: e.target.value }))} />
-        </div>
-        <div className="project-field">
-          <label className="field-label">Steps to Reach There</label>
-          <textarea className="ginput" rows={3} value={newCo.steps} onChange={(e) => setNewCo((c) => ({ ...c, steps: e.target.value }))} />
-        </div>
-        <div className="add-zone-save-row">
-          <button className="btn" onClick={saveNewCompany}>
-            Save Company
-          </button>
-        </div>
-      </div>
+        </Modal>
+      )}
 
       {data.companies.length > 0 && <div className="saved-entries-label">Saved Companies</div>}
+
+      {data.companies.length === 0 && (
+        <div className="empty-state-sm">No dream companies yet — tap "+ Add Company" above.</div>
+      )}
 
       {data.companies.map((co, idx) =>
         editingId === co.id ? (
