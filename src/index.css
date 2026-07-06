@@ -1270,65 +1270,143 @@ footer {
 }
 
 /* ---- Quick Revision ---- */
-.revision-subject-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+.revision-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
 }
-@media (max-width: 700px) {
-  .revision-subject-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-.revision-subject-card {
+.revision-sidebar {
+  width: 260px;
+  flex-shrink: 0;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  cursor: pointer;
   box-shadow: var(--shadow);
-  transition: transform 0.1s;
+  padding: 12px;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
-.revision-subject-card:hover {
-  transform: translateY(-1px);
-  border-color: var(--accent);
-}
-.revision-subject-card-top {
+.revision-sidebar-toolbar {
   display: flex;
-  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.revision-sidebar-toolbar .btn-outline,
+.revision-sidebar-toolbar .add-trigger-btn {
+  flex: 1;
+  padding: 7px 8px;
+  font-size: 12px;
+  text-align: center;
+}
+.revision-tree {
+  display: flex;
+  flex-direction: column;
+}
+.revision-tree-subject {
+  display: flex;
   align-items: center;
-  margin-bottom: 4px;
+  gap: 4px;
+  border-radius: 6px;
+  padding: 5px 4px;
+  cursor: pointer;
 }
-.revision-subject-actions {
+.revision-tree-subject:hover,
+.revision-tree-subject.active {
+  background: var(--accent-soft);
+}
+.revision-tree-subject-main {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
-.revision-subject-actions button {
+.revision-tree-caret {
+  font-size: 10px;
+  color: var(--ink-soft);
+  width: 12px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.revision-tree-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.revision-tree-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.revision-tree-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.revision-tree-actions .drag-handle {
+  font-size: 12px;
+  padding: 0 2px;
+}
+.revision-tree-actions button {
   border: none;
   background: none;
   cursor: pointer;
   color: var(--ink-soft);
-  font-size: 12px;
-  padding: 2px 5px;
+  font-size: 11px;
+  padding: 2px 4px;
 }
-.revision-subject-actions button:hover {
+.revision-tree-actions button:hover {
   color: var(--accent);
 }
-.revision-subject-actions button.danger:hover {
+.revision-tree-actions button.danger:hover {
   color: var(--bad);
 }
-.revision-subject-icon {
-  font-size: 22px;
-  margin-bottom: 6px;
+.revision-tree-modules {
+  margin: 1px 0 4px 0;
 }
-.revision-subject-name {
-  font-weight: 700;
-  font-size: 14px;
-  margin-bottom: 2px;
-}
-.revision-subject-count {
-  font-size: 11.5px;
+.revision-tree-module {
+  padding: 4px 6px 4px 28px;
+  font-size: 12px;
   color: var(--ink-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.revision-tree-module:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.revision-tree-module.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+.revision-tree-module-empty {
+  padding: 4px 6px 4px 28px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.revision-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .revision-layout {
+    flex-direction: column;
+  }
+  .revision-sidebar {
+    width: 100%;
+    position: static;
+    max-height: 280px;
+  }
 }
 
 .revision-header {
@@ -1401,32 +1479,90 @@ footer {
 .revision-module-body {
   padding: 0 14px 14px 34px;
 }
-.revision-field-block {
-  margin-bottom: 10px;
+.revision-kw-list {
+  display: flex;
+  flex-direction: column;
 }
-.revision-field-block:last-child {
-  margin-bottom: 0;
+.revision-kw-row {
+  display: flex;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
 }
-.revision-field-label {
+.revision-kw-row:last-child {
+  border-bottom: none;
+}
+.revision-kw-term {
+  flex: 0 0 170px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+}
+.revision-kw-desc {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+@media (max-width: 560px) {
+  .revision-kw-row {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .revision-kw-term {
+    flex: none;
+  }
+}
+
+.revision-qa-block {
+  margin-top: 12px;
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 12px;
+}
+.revision-qa-label {
   font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ink-soft);
-  margin-bottom: 3px;
+  color: var(--warn);
+  margin-bottom: 6px;
 }
-.revision-field-text {
-  font-size: 13px;
-  line-height: 1.55;
-  white-space: pre-wrap;
+.revision-qa-row {
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--ink);
 }
-.revision-tip-block {
-  background: var(--warn-bg);
-  border-left: 3px solid var(--warn);
-  border-radius: 6px;
-  padding: 8px 10px;
+.revision-qa-row + .revision-qa-row {
+  margin-top: 4px;
 }
-.revision-tip-block .revision-field-label {
+.revision-qa-q {
   color: var(--warn);
+  font-weight: 700;
+}
+.revision-qa-arrow {
+  color: var(--ink-soft);
+}
+.revision-qa-a {
+  color: var(--ink-soft);
+}
+
+.revision-kw-edit-row,
+.revision-qa-edit-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.revision-kw-edit-row .revision-kw-term-input {
+  flex: 0 0 160px;
+}
+.revision-kw-edit-row .text-input:not(.revision-kw-term-input),
+.revision-qa-edit-row .text-input {
+  flex: 1;
+}
+.revision-add-row-btn {
+  margin-top: 2px;
 }

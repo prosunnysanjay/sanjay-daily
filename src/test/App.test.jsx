@@ -282,48 +282,78 @@ describe('Study Tracking tab', () => {
 })
 
 describe('Revision tab', () => {
-  it('renders the seeded subject grid', async () => {
+  function revMain() {
+    return document.querySelector('.revision-main')
+  }
+
+  function revSidebar() {
+    return document.querySelector('.revision-sidebar')
+  }
+
+  it('renders the seeded subject list in the sidebar', async () => {
     await unlockApp()
     clickMainTab('Revision')
-    await waitFor(() => expect(screen.getByText('Linux')).toBeInTheDocument())
-    expect(screen.getByText('Docker')).toBeInTheDocument()
-    expect(screen.getByText('Kubernetes')).toBeInTheDocument()
-    expect(screen.getByText('Helm')).toBeInTheDocument()
-    expect(screen.getByText('Terraform & Terragrunt')).toBeInTheDocument()
+    await waitFor(() => expect(within(revSidebar()).getByText('Linux')).toBeInTheDocument())
+    expect(within(revSidebar()).getByText('Docker')).toBeInTheDocument()
+    expect(within(revSidebar()).getByText('Kubernetes')).toBeInTheDocument()
+    expect(within(revSidebar()).getByText('Helm')).toBeInTheDocument()
+    expect(within(revSidebar()).getByText('Terraform & Terragrunt')).toBeInTheDocument()
   })
 
-  it('opens a subject and shows its modules collapsed by default', async () => {
+  it('selecting a subject from the sidebar opens it, modules collapsed by default', async () => {
     await unlockApp()
     clickMainTab('Revision')
     await waitFor(() => screen.getByText('Docker'))
     fireEvent.click(screen.getByText('Docker'))
-    await waitFor(() => expect(screen.getByText('Multistage builds')).toBeInTheDocument())
-    expect(screen.queryByText('No notes yet — tap ✎ to add some.')).not.toBeInTheDocument()
+    await waitFor(() => expect(within(revMain()).getByText('Dockerfile')).toBeInTheDocument())
+    expect(within(revMain()).queryByText('BuildKit secret mount')).not.toBeInTheDocument()
   })
 
-  it('expands a module, edits its notes, and shows them in the read view', async () => {
+  it('jumping to a module from the sidebar tree expands it in the main panel with its seeded keywords and Q&A', async () => {
     await unlockApp()
     clickMainTab('Revision')
     await waitFor(() => screen.getByText('Docker'))
     fireEvent.click(screen.getByText('Docker'))
-    await waitFor(() => screen.getByText('Multistage builds'))
+    await waitFor(() => within(revSidebar()).getByText('Volumes'))
+    fireEvent.click(within(revSidebar()).getByText('Volumes'))
+    await waitFor(() => expect(revMain().textContent).toContain('Named volume'))
+    expect(revMain().textContent).toContain('Interview Q&A')
+    expect(revMain().textContent).toContain('tmpfs')
+  })
 
-    fireEvent.click(screen.getByText('Multistage builds'))
-    await waitFor(() => expect(screen.getByText('No notes yet — tap ✎ to add some.')).toBeInTheDocument())
+  it('expands an empty module, adds a keyword and a Q&A pair via edit mode, and shows them in the read view', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('Scripting'))
+    fireEvent.click(screen.getByText('Scripting'))
+    await waitFor(() => within(revMain()).getByText('Bash'))
 
-    const moduleRow = screen.getByText('Multistage builds').closest('.revision-module')
+    fireEvent.click(within(revMain()).getByText('Bash'))
+    await waitFor(() => expect(within(revMain()).getByText('No notes yet — tap ✎ to add some.')).toBeInTheDocument())
+
+    const moduleRow = within(revMain()).getByText('Bash').closest('.revision-module')
     fireEvent.click(within(moduleRow).getByText('✎'))
 
     await waitFor(() => screen.getByText('Save Changes'))
     const editRow = screen.getByText('Save Changes').closest('.revision-module')
-    const textareas = within(editRow).getAllByRole('textbox')
-    // Title, Notes, Why it's useful, Interview tips
-    fireEvent.change(textareas[1], { target: { value: 'Use COPY --from to shrink final image' } })
-    fireEvent.change(textareas[3], { target: { value: 'Explain build cache layers' } })
+
+    fireEvent.click(within(editRow).getByText('+ Add keyword'))
+    fireEvent.change(within(editRow).getByPlaceholderText('Term'), { target: { value: 'set -euo pipefail' } })
+    fireEvent.change(within(editRow).getByPlaceholderText('One-line description'), {
+      target: { value: 'fail fast on errors, unset vars, and pipe failures' },
+    })
+
+    fireEvent.click(within(editRow).getByText('+ Add Q&A'))
+    fireEvent.change(within(editRow).getByPlaceholderText('Question'), { target: { value: 'Why set -euo pipefail?' } })
+    fireEvent.change(within(editRow).getByPlaceholderText('One-line answer'), {
+      target: { value: 'Stops silent failures in scripts.' },
+    })
+
     fireEvent.click(within(editRow).getByText('Save Changes'))
 
-    await waitFor(() => expect(screen.getByText('Use COPY --from to shrink final image')).toBeInTheDocument())
-    expect(screen.getByText('Explain build cache layers')).toBeInTheDocument()
+    await waitFor(() => expect(revMain().textContent).toContain('set -euo pipefail'))
+    expect(revMain().textContent).toContain('Why set -euo pipefail?')
+    expect(revMain().textContent).toContain('Stops silent failures in scripts.')
   })
 
   it('adds a new subject via the modal', async () => {
@@ -347,7 +377,7 @@ describe('Revision tab', () => {
     await waitFor(() => screen.getByText('New Module'))
     fireEvent.change(screen.getByPlaceholderText('e.g. Ingress'), { target: { value: 'Library charts' } })
     fireEvent.click(screen.getByText('Save Module'))
-    await waitFor(() => expect(screen.getByText('Library charts')).toBeInTheDocument())
+    await waitFor(() => expect(within(revMain()).getByText('Library charts')).toBeInTheDocument())
   })
 
   it('deletes a module', async () => {
@@ -355,21 +385,23 @@ describe('Revision tab', () => {
     clickMainTab('Revision')
     await waitFor(() => screen.getByText('Scripting'))
     fireEvent.click(screen.getByText('Scripting'))
-    await waitFor(() => screen.getByText('Bash'))
-    const moduleRow = screen.getByText('Bash').closest('.revision-module')
+    await waitFor(() => within(revMain()).getByText('Bash'))
+    const moduleRow = within(revMain()).getByText('Bash').closest('.revision-module')
     fireEvent.click(within(moduleRow).getByText('✕'))
-    await waitFor(() => expect(screen.queryByText('Bash')).not.toBeInTheDocument())
+    await waitFor(() => expect(within(revMain()).queryByText('Bash')).not.toBeInTheDocument())
   })
 
-  it('filters modules by search text', async () => {
+  it('filters modules in the main panel by search text, sidebar keeps the full list', async () => {
     await unlockApp()
     clickMainTab('Revision')
     await waitFor(() => screen.getByText('Kubernetes'))
     fireEvent.click(screen.getByText('Kubernetes'))
-    await waitFor(() => screen.getByText('Ingress'))
+    await waitFor(() => within(revMain()).getByText('Ingress'))
     fireEvent.change(screen.getByPlaceholderText('Filter modules...'), { target: { value: 'ingress' } })
-    await waitFor(() => expect(screen.queryByText('Pods')).not.toBeInTheDocument())
-    expect(screen.getByText('Ingress')).toBeInTheDocument()
+    await waitFor(() => expect(within(revMain()).queryByText('Pods')).not.toBeInTheDocument())
+    expect(within(revMain()).getByText('Ingress')).toBeInTheDocument()
+    // The sidebar tree stays a full, unfiltered index for navigation.
+    expect(within(revSidebar()).getByText('Pods')).toBeInTheDocument()
   })
 })
 
