@@ -1,33 +1,60 @@
 :root {
-  --bg: #f6f2ea;
-  --paper: #ffffff;
-  --ink: #2b2724;
-  --ink-soft: #6b635b;
-  --line: #e4dccc;
-  --focus-bg: #fff9ed;
-  --focus-border: #d98a3d;
-  --accent: #6e5a8c;
-  --accent-soft: #e4dcee;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgba(43, 39, 36, 0.06), 0 4px 14px rgba(43, 39, 36, 0.05);
-  --good: #6e8c5c;
-  --good-bg: #e5edd8;
-  --warn: #c98a2e;
-  --warn-bg: #fbe8c9;
-  --bad: #bd4f36;
-  --bad-bg: #f8d7ce;
+  --bg: #121118;
+  --paper: #1c1a24;
+  --input-bg: #242130;
+  --solid: #0b0a0f;
+  --ink: #f1eef7;
+  --ink-soft: #948fa3;
+  --line: #322e3d;
+  --focus-bg: #241d15;
+  --focus-border: #f2a65a;
+  --focus-line: rgba(242, 166, 90, 0.35);
+  --accent: #8b7cf6;
+  --accent-soft: rgba(139, 124, 246, 0.16);
+  --radius: 12px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 30px rgba(0, 0, 0, 0.45);
+  --good: #5fd98a;
+  --good-bg: rgba(95, 217, 138, 0.14);
+  --warn: #f2b94d;
+  --warn-bg: rgba(242, 185, 77, 0.14);
+  --bad: #f2685f;
+  --bad-bg: rgba(242, 104, 95, 0.14);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-color: var(--line) transparent;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
+  background: radial-gradient(circle at 15% -10%, rgba(139, 124, 246, 0.14), transparent 45%), var(--bg);
+  background-attachment: fixed;
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 20px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-soft);
+}
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
 }
 
 .wrap {
@@ -93,6 +120,8 @@ h1 {
 .login-input {
   width: 100%;
   border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
   border-radius: 7px;
   padding: 10px 12px;
   font-size: 15px;
@@ -128,9 +157,9 @@ h1 {
   white-space: nowrap;
 }
 .main-tab.active {
-  background: var(--ink);
+  background: var(--solid);
   color: #fff;
-  border-color: var(--ink);
+  border-color: var(--solid);
 }
 
 /* ---- SHARED CARD ---- */
@@ -274,7 +303,8 @@ textarea.ginput {
   padding: 8px 10px;
   font-size: 13.5px;
   font-family: inherit;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--ink);
 }
 textarea.ginput {
   resize: vertical;
@@ -437,6 +467,8 @@ textarea.ginput {
 }
 .freelance-row input {
   border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
   border-radius: 7px;
   padding: 6px 9px;
   font-size: 13px;
@@ -469,6 +501,8 @@ textarea.ginput {
 .idea-row input,
 .idea-row textarea {
   border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
   border-radius: 7px;
   padding: 6px 9px;
   font-size: 13px;
@@ -542,8 +576,7 @@ textarea.ginput {
   box-shadow: var(--shadow);
   position: relative;
 }
-.focus-zone::before {
-  content: 'TODAY';
+.focus-zone-ribbon {
   position: absolute;
   top: -10px;
   left: 14px;
@@ -554,6 +587,16 @@ textarea.ginput {
   letter-spacing: 0.1em;
   padding: 3px 9px;
   border-radius: 5px;
+  cursor: text;
+  min-width: 20px;
+  display: inline-block;
+}
+.focus-zone-ribbon:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+.focus-zone-ribbon:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px #fff;
 }
 .focus-list {
   list-style: none;
@@ -565,7 +608,7 @@ textarea.ginput {
   align-items: flex-start;
   gap: 10px;
   padding: 8px 4px;
-  border-bottom: 1px dashed #e8c9a0;
+  border-bottom: 1px dashed var(--focus-line);
 }
 .focus-list li:last-child {
   border-bottom: none;
@@ -589,7 +632,8 @@ textarea.ginput {
   border-radius: 7px;
   padding: 7px 10px;
   font-size: 14px;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--ink);
 }
 .add-row button {
   border: none;
@@ -600,6 +644,28 @@ textarea.ginput {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+}
+.add-row select {
+  flex-shrink: 0;
+  max-width: 140px;
+  border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
+  border-radius: 7px;
+  padding: 7px 8px;
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.focus-section-tag {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  align-self: center;
 }
 .focus-empty {
   color: var(--ink-soft);
@@ -635,6 +701,15 @@ textarea.ginput {
   margin: 0;
   flex: 1;
   font-weight: 600;
+  cursor: text;
+}
+.section-head h2:hover {
+  text-decoration: underline dotted var(--ink-soft);
+}
+.section-head h2:focus {
+  outline: 1px dashed var(--accent);
+  border-radius: 3px;
+  cursor: text;
 }
 .count {
   font-size: 11.5px;
@@ -720,6 +795,8 @@ input[type='checkbox'] {
 .section-add input {
   flex: 1;
   border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
   border-radius: 7px;
   padding: 6px 9px;
   font-size: 13px;
@@ -754,6 +831,15 @@ input[type='checkbox'] {
   font-size: 14.5px;
   margin: 0 0 10px;
   font-weight: 700;
+  cursor: text;
+  display: inline-block;
+}
+.tt-head h2:hover {
+  text-decoration: underline dotted var(--ink-soft);
+}
+.tt-head h2:focus {
+  outline: 1px dashed var(--accent);
+  border-radius: 3px;
 }
 .day-tabs {
   display: flex;
@@ -837,6 +923,8 @@ input[type='checkbox'] {
 }
 .tt-add-row input {
   border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
   border-radius: 7px;
   padding: 6px 9px;
   font-size: 13px;
@@ -976,8 +1064,8 @@ input[type='checkbox'] {
   border-style: dashed;
 }
 .study-flow-node.is-root .study-flow-node-inner {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--accent);
+  border-color: var(--accent);
   padding: 8px 12px;
 }
 .study-flow-node.is-root .study-flow-name {
@@ -1088,7 +1176,7 @@ input[type='checkbox'] {
   position: fixed;
   bottom: 16px;
   right: 16px;
-  background: var(--ink);
+  background: var(--solid);
   color: #fff;
   font-size: 11.5px;
   padding: 6px 12px;
@@ -1106,7 +1194,7 @@ input[type='checkbox'] {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(43, 39, 36, 0.45);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1115,8 +1203,9 @@ input[type='checkbox'] {
 }
 .modal-box {
   background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 8px 30px rgba(43, 39, 36, 0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   width: 100%;
   max-width: 560px;
   max-height: 88vh;
@@ -1178,4 +1267,166 @@ footer {
   h1 {
     font-size: 21px;
   }
+}
+
+/* ---- Quick Revision ---- */
+.revision-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .revision-subject-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.revision-subject-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.1s;
+}
+.revision-subject-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+.revision-subject-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.revision-subject-actions {
+  display: flex;
+  gap: 2px;
+}
+.revision-subject-actions button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 12px;
+  padding: 2px 5px;
+}
+.revision-subject-actions button:hover {
+  color: var(--accent);
+}
+.revision-subject-actions button.danger:hover {
+  color: var(--bad);
+}
+.revision-subject-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+.revision-subject-name {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.revision-subject-count {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+.revision-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.revision-subject-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  margin-right: auto;
+}
+.revision-search {
+  width: 200px;
+}
+
+.revision-module {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.revision-module-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.revision-module-chevron {
+  color: var(--ink-soft);
+  font-size: 11px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.revision-module-chevron.open {
+  transform: rotate(90deg);
+}
+.revision-module-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.revision-module-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.revision-module-actions button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-soft);
+  padding: 3px 6px;
+}
+.revision-module-actions button:hover {
+  color: var(--accent);
+}
+.revision-module-actions button.danger:hover {
+  color: var(--bad);
+}
+.revision-module-body {
+  padding: 0 14px 14px 34px;
+}
+.revision-field-block {
+  margin-bottom: 10px;
+}
+.revision-field-block:last-child {
+  margin-bottom: 0;
+}
+.revision-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin-bottom: 3px;
+}
+.revision-field-text {
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+.revision-tip-block {
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.revision-tip-block .revision-field-label {
+  color: var(--warn);
 }

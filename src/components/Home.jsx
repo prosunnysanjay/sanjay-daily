@@ -7,6 +7,7 @@ import { countTopics } from './StudyTracking'
 const NAV_ITEMS = [
   { id: 'daily', icon: '📋', title: 'Daily', desc: "Today's tasks + your timetable, side by side." },
   { id: 'study', icon: '🧠', title: 'Study Tracking', desc: 'A mindmap of what you\'re learning, topic by topic.' },
+  { id: 'revision', icon: '⚡', title: 'Revision', desc: 'Quick-dump notes per subject — what it is, why it matters, interview tips.' },
   { id: 'projects', icon: '🗂️', title: 'Projects', desc: 'Description, tools, concepts, architecture per project.' },
   {
     id: 'jobs',

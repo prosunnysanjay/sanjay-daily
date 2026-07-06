@@ -40,10 +40,19 @@ describe('Password gate', () => {
 })
 
 describe('Tab navigation', () => {
-  it('shows all 7 tabs', async () => {
+  it('shows all 8 tabs', async () => {
     await unlockApp()
     const tabLabels = [...document.querySelectorAll('.main-tab')].map((t) => t.textContent)
-    expect(tabLabels).toEqual(['Home', 'Daily', 'Study Tracking', 'Projects', 'Jobs', 'Earning Ideas', 'Motivate'])
+    expect(tabLabels).toEqual([
+      'Home',
+      'Daily',
+      'Study Tracking',
+      'Revision',
+      'Projects',
+      'Jobs',
+      'Earning Ideas',
+      'Motivate',
+    ])
   })
 
   it('clicking Daily switches the panel', async () => {
@@ -63,8 +72,8 @@ describe('Daily tab', () => {
   it('renders default sections and timetable', async () => {
     await unlockApp()
     clickMainTab('Daily')
-    await waitFor(() => expect(screen.getByText('Work & Career')).toBeInTheDocument())
-    expect(screen.getByText('Health & Rehab')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Work & Career', { selector: 'h2' })).toBeInTheDocument())
+    expect(screen.getByText('Health & Rehab', { selector: 'h2' })).toBeInTheDocument()
     expect(screen.getByText('5:30')).toBeInTheDocument()
   })
 
@@ -75,7 +84,50 @@ describe('Daily tab', () => {
     const input = screen.getByPlaceholderText('Add a top priority for today...')
     fireEvent.change(input, { target: { value: 'Call the bank' } })
     fireEvent.click(screen.getByText('Add', { selector: '.add-row button' }))
-    await waitFor(() => expect(screen.getByText('Call the bank')).toBeInTheDocument())
+    // The new task is pinned into Today AND lives in its owning section below,
+    // so it renders twice — once in each place, kept in sync.
+    await waitFor(() => {
+      const focusZone = document.querySelector('.focus-zone')
+      expect(within(focusZone).getByText('Call the bank')).toBeInTheDocument()
+    })
+  })
+
+  it('editing a pinned task from Today updates it in its owning section too', async () => {
+    await unlockApp()
+    clickMainTab('Daily')
+    await waitFor(() => screen.getByPlaceholderText('Add a top priority for today...'))
+    fireEvent.change(screen.getByPlaceholderText('Add a top priority for today...'), {
+      target: { value: 'Ping the recruiter' },
+    })
+    fireEvent.click(screen.getByText('Add', { selector: '.add-row button' }))
+
+    const focusZone = document.querySelector('.focus-zone')
+    await waitFor(() => within(focusZone).getByText('Ping the recruiter'))
+    fireEvent.click(within(focusZone).getByTitle('Edit'))
+    const editable = within(focusZone).getByText('Ping the recruiter')
+    editable.textContent = 'Ping the recruiter today'
+    fireEvent.blur(editable)
+
+    await waitFor(() => {
+      const section = document.querySelector('.section')
+      expect(within(section).getByText('Ping the recruiter today')).toBeInTheDocument()
+    })
+  })
+
+  it('renames the Today ribbon and a section heading in place', async () => {
+    await unlockApp()
+    clickMainTab('Daily')
+    await waitFor(() => screen.getByText('TODAY'))
+
+    const ribbon = screen.getByText('TODAY')
+    ribbon.textContent = 'THIS WEEK'
+    fireEvent.blur(ribbon)
+    await waitFor(() => expect(screen.getByText('THIS WEEK')).toBeInTheDocument())
+
+    const heading = screen.getByText('Work & Career', { selector: 'h2' })
+    heading.textContent = 'Career Goals'
+    fireEvent.blur(heading)
+    await waitFor(() => expect(screen.getByText('Career Goals', { selector: 'h2' })).toBeInTheDocument())
   })
 
   it('switches timetable day tabs', async () => {
@@ -226,6 +278,98 @@ describe('Study Tracking tab', () => {
     // "Show all" clears the filter
     fireEvent.click(screen.getByText('Show all'))
     await waitFor(() => expect(screen.getAllByText('SRE', { selector: 'h2' }).length).toBe(1))
+  })
+})
+
+describe('Revision tab', () => {
+  it('renders the seeded subject grid', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => expect(screen.getByText('Linux')).toBeInTheDocument())
+    expect(screen.getByText('Docker')).toBeInTheDocument()
+    expect(screen.getByText('Kubernetes')).toBeInTheDocument()
+    expect(screen.getByText('Helm')).toBeInTheDocument()
+    expect(screen.getByText('Terraform & Terragrunt')).toBeInTheDocument()
+  })
+
+  it('opens a subject and shows its modules collapsed by default', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('Docker'))
+    fireEvent.click(screen.getByText('Docker'))
+    await waitFor(() => expect(screen.getByText('Multistage builds')).toBeInTheDocument())
+    expect(screen.queryByText('No notes yet — tap ✎ to add some.')).not.toBeInTheDocument()
+  })
+
+  it('expands a module, edits its notes, and shows them in the read view', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('Docker'))
+    fireEvent.click(screen.getByText('Docker'))
+    await waitFor(() => screen.getByText('Multistage builds'))
+
+    fireEvent.click(screen.getByText('Multistage builds'))
+    await waitFor(() => expect(screen.getByText('No notes yet — tap ✎ to add some.')).toBeInTheDocument())
+
+    const moduleRow = screen.getByText('Multistage builds').closest('.revision-module')
+    fireEvent.click(within(moduleRow).getByText('✎'))
+
+    await waitFor(() => screen.getByText('Save Changes'))
+    const editRow = screen.getByText('Save Changes').closest('.revision-module')
+    const textareas = within(editRow).getAllByRole('textbox')
+    // Title, Notes, Why it's useful, Interview tips
+    fireEvent.change(textareas[1], { target: { value: 'Use COPY --from to shrink final image' } })
+    fireEvent.change(textareas[3], { target: { value: 'Explain build cache layers' } })
+    fireEvent.click(within(editRow).getByText('Save Changes'))
+
+    await waitFor(() => expect(screen.getByText('Use COPY --from to shrink final image')).toBeInTheDocument())
+    expect(screen.getByText('Explain build cache layers')).toBeInTheDocument()
+  })
+
+  it('adds a new subject via the modal', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('+ Add Subject'))
+    fireEvent.click(screen.getByText('+ Add Subject'))
+    await waitFor(() => screen.getByText('New Subject'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. Ansible'), { target: { value: 'Ansible' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(screen.getByText('Ansible')).toBeInTheDocument())
+  })
+
+  it('adds a module inside a subject', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('Helm'))
+    fireEvent.click(screen.getByText('Helm'))
+    await waitFor(() => screen.getByText('+ Add Module'))
+    fireEvent.click(screen.getByText('+ Add Module'))
+    await waitFor(() => screen.getByText('New Module'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. Ingress'), { target: { value: 'Library charts' } })
+    fireEvent.click(screen.getByText('Save Module'))
+    await waitFor(() => expect(screen.getByText('Library charts')).toBeInTheDocument())
+  })
+
+  it('deletes a module', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('Scripting'))
+    fireEvent.click(screen.getByText('Scripting'))
+    await waitFor(() => screen.getByText('Bash'))
+    const moduleRow = screen.getByText('Bash').closest('.revision-module')
+    fireEvent.click(within(moduleRow).getByText('✕'))
+    await waitFor(() => expect(screen.queryByText('Bash')).not.toBeInTheDocument())
+  })
+
+  it('filters modules by search text', async () => {
+    await unlockApp()
+    clickMainTab('Revision')
+    await waitFor(() => screen.getByText('Kubernetes'))
+    fireEvent.click(screen.getByText('Kubernetes'))
+    await waitFor(() => screen.getByText('Ingress'))
+    fireEvent.change(screen.getByPlaceholderText('Filter modules...'), { target: { value: 'ingress' } })
+    await waitFor(() => expect(screen.queryByText('Pods')).not.toBeInTheDocument())
+    expect(screen.getByText('Ingress')).toBeInTheDocument()
   })
 })
 

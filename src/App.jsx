@@ -3,6 +3,7 @@ import PasswordGate from './components/PasswordGate'
 import Home from './components/Home'
 import Daily from './components/Daily'
 import StudyTracking from './components/StudyTracking'
+import Revision from './components/Revision'
 import Projects from './components/Projects'
 import Jobs from './components/Jobs'
 import Earning from './components/Earning'
@@ -21,6 +22,12 @@ const TABS = [
     label: 'Study Tracking',
     title: 'Study Tracking',
     sub: 'A mindmap of what you\'re learning — expand a topic into its sub-topics, drag to reorganize.',
+  },
+  {
+    id: 'revision',
+    label: 'Revision',
+    title: 'Quick Revision',
+    sub: 'Pick a subject, scan its modules, dump what you know — notes, why it matters, interview tips.',
   },
   { id: 'projects', label: 'Projects', title: 'Projects', sub: 'What you built, what you used, what it covers.' },
   {
@@ -74,6 +81,7 @@ function AppShell() {
       {activeTab === 'home' && <Home onNavigate={setActiveTab} />}
       {activeTab === 'daily' && <Daily flashSaved={flashSaved} />}
       {activeTab === 'study' && <StudyTracking flashSaved={flashSaved} />}
+      {activeTab === 'revision' && <Revision flashSaved={flashSaved} />}
       {activeTab === 'projects' && <Projects flashSaved={flashSaved} />}
       {activeTab === 'jobs' && <Jobs flashSaved={flashSaved} />}
       {activeTab === 'earning' && <Earning flashSaved={flashSaved} />}
