@@ -1,7 +1,7 @@
 {
   "name": "Sanjay's Daily",
   "short_name": "Sanjay Daily",
-  "description": "Daily tasks, timetable, study tracking, projects, jobs, ideas, and motivation — all in one place.",
+  "description": "Daily tasks, timetable, revision notes, projects, jobs, ideas, and motivation — all in one place.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#121118",

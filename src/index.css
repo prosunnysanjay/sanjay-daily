@@ -953,225 +953,6 @@ input[type='checkbox'] {
   display: inline-block;
 }
 
-/* ---- STUDY TRACKING (one mindmap per section) ---- */
-.study-topic-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 12px;
-}
-.study-topic-chip {
-  border: 1.5px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  border-radius: 16px;
-  padding: 6px 13px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.study-topic-chip:hover {
-  border-color: var(--accent);
-}
-.study-topic-chip.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-.study-topic-chip-actions {
-  display: flex;
-  gap: 8px;
-}
-.study-topic-chip-actions button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.study-section-card {
-  padding-top: 12px;
-}
-.study-section-head {
-  margin-bottom: 8px;
-}
-.study-section-head h2 {
-  font-size: 13.5px;
-}
-
-.study-flow-wrap {
-  height: 340px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg);
-}
-.study-flow-wrap .react-flow__background {
-  background: var(--bg);
-}
-.study-flow-wrap .react-flow__edge-path {
-  stroke: var(--accent);
-}
-.study-flow-wrap .react-flow__controls {
-  box-shadow: var(--shadow);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.study-flow-wrap .react-flow__controls-button {
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
-  fill: var(--ink);
-  stroke: var(--ink);
-}
-.study-flow-wrap .react-flow__controls-button:hover {
-  background: var(--accent-soft);
-}
-.study-flow-wrap .react-flow__attribution {
-  display: none;
-}
-
-.study-flow-node {
-  width: 230px;
-  pointer-events: auto;
-}
-.study-flow-node-inner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  background: var(--paper);
-  border: 1.5px solid var(--line);
-  border-radius: 18px;
-  padding: 7px 10px;
-  box-shadow: var(--shadow);
-  box-sizing: border-box;
-  transition: border-color 0.1s, box-shadow 0.1s;
-}
-.study-flow-node:hover .study-flow-node-inner {
-  border-color: var(--accent);
-}
-.study-flow-node.is-drop-before .study-flow-node-inner {
-  box-shadow: inset 0 2px 0 var(--accent);
-}
-.study-flow-node.is-drop-after .study-flow-node-inner {
-  box-shadow: inset 0 -2px 0 var(--accent);
-}
-.study-flow-node.is-drop-inside .study-flow-node-inner {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  border-style: dashed;
-}
-.study-flow-node.is-root .study-flow-node-inner {
-  background: var(--accent);
-  border-color: var(--accent);
-  padding: 8px 12px;
-}
-.study-flow-node.is-root .study-flow-name {
-  color: #fff;
-  font-weight: 700;
-}
-.study-flow-node.is-root .study-flow-caret {
-  color: #fff;
-}
-.study-flow-node.is-root .study-flow-actions button {
-  color: rgba(255, 255, 255, 0.75);
-}
-.study-flow-node.is-root .study-flow-actions button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.15);
-}
-.study-flow-add-node .study-flow-node-inner {
-  border-style: dashed;
-  border-color: var(--focus-border);
-  background: var(--focus-bg);
-}
-
-.study-drag-handle {
-  cursor: grab;
-  color: var(--ink-soft);
-  font-size: 13px;
-  flex-shrink: 0;
-  user-select: none;
-}
-.study-drag-handle:active {
-  cursor: grabbing;
-}
-.study-flow-caret {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 11px;
-  color: var(--ink-soft);
-  width: 14px;
-  flex-shrink: 0;
-  padding: 0;
-}
-.study-flow-name {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.study-flow-actions {
-  display: flex;
-  gap: 1px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.1s;
-}
-.study-flow-node:hover .study-flow-actions {
-  opacity: 1;
-}
-.study-flow-actions button {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 11px;
-  color: var(--ink-soft);
-  padding: 2px 4px;
-  border-radius: 5px;
-}
-.study-flow-actions button:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-.study-flow-actions button.danger:hover {
-  color: var(--bad);
-  background: var(--bad-bg);
-}
-.study-flow-edit-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.study-flow-edit-input {
-  flex: 1;
-  min-width: 90px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 4px 7px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-}
-.study-flow-inline-btn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--ink-soft);
-  padding: 2px 5px;
-  flex-shrink: 0;
-}
-.study-flow-inline-btn:hover {
-  color: var(--accent);
-}
-
 .save-pill {
   position: fixed;
   bottom: 16px;
@@ -1266,6 +1047,35 @@ footer {
   }
   h1 {
     font-size: 21px;
+  }
+
+  /* Stack input rows that would otherwise overflow narrow screens. */
+  .add-row {
+    flex-wrap: wrap;
+  }
+  .add-row select,
+  .add-row input,
+  .add-row button {
+    flex: 1 1 100%;
+  }
+  .freelance-row,
+  .idea-row {
+    flex-wrap: wrap;
+  }
+  .freelance-row input.fl-name,
+  .freelance-row input.fl-link,
+  .idea-row input.idea-title,
+  .idea-row textarea.idea-desc {
+    flex: 1 1 100%;
+  }
+  .tt-add-row {
+    flex-wrap: wrap;
+  }
+  .tt-add-row input.tt-add-time {
+    flex: 0 1 90px;
+  }
+  .tt-add-row input.tt-add-activity {
+    flex: 1 1 auto;
   }
 }
 
