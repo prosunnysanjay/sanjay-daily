@@ -2,7 +2,6 @@ import { useState } from 'react'
 import PasswordGate from './components/PasswordGate'
 import Home from './components/Home'
 import Daily from './components/Daily'
-import StudyTracking from './components/StudyTracking'
 import Revision from './components/Revision'
 import Projects from './components/Projects'
 import Jobs from './components/Jobs'
@@ -16,12 +15,6 @@ const TABS = [
     label: 'Daily',
     title: 'Your day, two halves',
     sub: "Left: what to do. Right: when to do it. They don't sync — edit either side freely.",
-  },
-  {
-    id: 'study',
-    label: 'Study Tracking',
-    title: 'Study Tracking',
-    sub: 'A mindmap of what you\'re learning — expand a topic into its sub-topics, drag to reorganize.',
   },
   {
     id: 'revision',
@@ -80,7 +73,6 @@ function AppShell() {
 
       {activeTab === 'home' && <Home onNavigate={setActiveTab} />}
       {activeTab === 'daily' && <Daily flashSaved={flashSaved} />}
-      {activeTab === 'study' && <StudyTracking flashSaved={flashSaved} />}
       {activeTab === 'revision' && <Revision flashSaved={flashSaved} />}
       {activeTab === 'projects' && <Projects flashSaved={flashSaved} />}
       {activeTab === 'jobs' && <Jobs flashSaved={flashSaved} />}

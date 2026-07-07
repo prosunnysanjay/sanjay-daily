@@ -71,7 +71,6 @@ export async function healthCheck() {
 
 export const STORAGE_KEYS = {
   daily: 'sanjay_daily_dual_v1',
-  studyTracking: 'sanjay_study_tracking_v1',
   revision: 'sanjay_revision_v1',
   projects: 'sanjay_projects_v1',
   jobs: 'sanjay_jobs_v1',

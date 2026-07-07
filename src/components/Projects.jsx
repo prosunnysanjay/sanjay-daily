@@ -4,7 +4,46 @@ import { uid, escapeHtml, dragHandlers, reorderArray, makeUndoStack } from '../l
 import Modal from './Modal'
 
 const undoStack = makeUndoStack(20)
-const BLANK_PROJECT = { name: '', description: '', tools: '', concepts: '', architecture: '' }
+const BLANK_PROJECT = { name: '', description: '', tools: '', concepts: '', architecture: '', notes: '' }
+
+const SEED_PROJECTS = [
+  {
+    name: 'MindBridge AI Auditor — KPMG Clara Analytics (KCA AITS)',
+    description:
+      "AI Transaction Scoring system built for KPMG (Big 4) — scores financial transactions from 0 to 1 for risk and anomaly detection, the higher the score the more unusual the transaction. Ran on multi-region AKS across 5 regions (US, UK, CA, EMA, Pilot), each with primary + DR clusters, maintaining 99.9% uptime SLA with cost optimization.",
+    tools:
+      'Azure, AKS, Azure DevOps, Azure Application Gateway (WAF), Azure Log Analytics/KQL, Azure Key Vault, Azure CLI, MongoDB, SCOM, Bash, ServiceNow',
+    concepts:
+      'Multi-region HA architecture, DR/failover, RBAC, Conditional Access, Azure Policy, Zero Trust security, ITIL incident/change management, WAF/OWASP CRS tuning, secrets rotation',
+    architecture:
+      '- Provisioned and operated the full Azure/DevOps platform on multi-region AKS (10 clusters: primary + DR across US/UK/CA/EMA/Pilot), building CI/CD pipelines in Azure DevOps.\n- Managed cluster health, scaling, node pools, and high availability across regions.\n- Diagnosed and resolved Azure Application Gateway WAF 403 incidents via KQL queries against Azure Diagnostics firewall logs in Log Analytics; identified triggered OWASP CRS rules and applied targeted WAF exclusions.\n- Ran daily operational monitoring via custom SCOM-integrated Bash scripts — MongoDB snapshot health, collider job queuing, pgsusan shard states, node disk utilization across primary and DR clusters.\n- Managed secrets, TLS certificates, and MongoDB credentials across primary/DR Azure Key Vaults; synced secrets cross-region using Azure CLI scripting.\n- Handled incidents and change requests via ServiceNow under ITIL; implemented Zero Trust controls (RBAC, Conditional Access, Azure Policy) across identity, network, and workload layers.',
+    notes: '',
+  },
+  {
+    name: 'Cloud-Native E-Commerce Platform (100+ Microservices)',
+    description:
+      'A reference cloud-native e-commerce platform simulating a real online retail business (browse products, add to cart, place orders, track deliveries) selling general consumer goods — modeled on large-scale microservices architectures like Amazon/Flipkart, built to replicate real-world enterprise patterns rather than a real business.',
+    tools:
+      'Go, Java, Python, Docker, Docker Compose, Terraform, Kubernetes, AKS, GitHub Actions, Argo CD, OpenFeature (flagd), OpenTelemetry, Prometheus, Grafana, EFK',
+    concepts:
+      'Polyglot microservices architecture, multi-stage builds, GitOps, feature flagging, SAST/DAST, remote state locking, observability (metrics/logs/traces), custom DNS per environment',
+    architecture:
+      '- Architected end-to-end DevOps infrastructure for 100+ microservices across Go, Java, and Python; collaborated with multiple dev teams each owning 4-5 microservices.\n- Containerized polyglot microservices with multi-stage Dockerfiles; orchestrated local dev environments with Docker Compose.\n- Provisioned AKS infrastructure using Terraform with remote state locking and modular design.\n- Deployed workloads to AKS via Kubernetes manifests with RBAC-scoped Service Accounts; integrated OpenFeature flagd for feature flag management; configured custom DNS across dev/staging/production.\n- Built GitHub Actions CI pipelines with integrated SAST/DAST security scanning.\n- Implemented GitOps-based CD using Argo CD, cutting deployment cycle time by 20%.\n- Deployed a full observability stack: OpenTelemetry, Prometheus, Grafana, and EFK.',
+    notes: '',
+  },
+  {
+    name: 'Monolithic Go Web App DevOps Modernisation',
+    description:
+      'Internal Order Management System used by warehouse and operations teams — handled order processing, inventory updates, shipment creation, invoice generation, and customer order tracking. Originally a single Go monolith deployed on VMs; modernized with full containerization and delivery automation without changing application code.',
+    tools:
+      'Go, Docker, Kubernetes, Helm, AKS, GitHub Actions, Argo CD, Nginx Ingress, Jenkins, Azure DevOps, Terraform, Terragrunt, Prometheus, Grafana, Nagios, ServiceNow',
+    concepts:
+      'Monolith containerization without code changes, GitOps, SAST/DAST scanning, IaC, ITIL incident management, DevSecOps practices',
+    architecture:
+      '- Modernised the monolith with complete containerization — multi-stage Dockerfile, Kubernetes manifests, Helm charts for AKS — without altering application code.\n- Built a GitHub Actions CI pipeline for automated build, test, and container registry push.\n- Implemented Argo CD for GitOps-based CD with automated sync to AKS; configured Nginx Ingress for traffic routing.\n- Designed and maintained CI/CD pipelines using Jenkins and Azure DevOps with integrated SAST/DAST security scanning.\n- Provisioned infrastructure using Terraform and Terragrunt.\n- Monitored system performance using Prometheus, Grafana, and Nagios; responded to incidents per ITIL via ServiceNow.\n- Collaborated with dev teams to enforce DevSecOps practices across delivery pipelines.',
+    notes: '',
+  },
+]
 
 export default function Projects({ flashSaved }) {
   const [data, setData] = useState(null)
@@ -18,13 +57,25 @@ export default function Projects({ flashSaved }) {
 
   async function load() {
     let loaded = { projects: [] }
+    let needsPersist = false
     try {
       const result = await storageGet(STORAGE_KEYS.projects)
       if (result && result.value) loaded = JSON.parse(result.value)
-      else await persist(loaded)
+      else needsPersist = true
     } catch {
-      await persist(loaded)
+      needsPersist = true
     }
+
+    // One-time seed: add each resume project once (matched by name), leaving any
+    // projects the user already added or edited untouched.
+    for (const seed of SEED_PROJECTS) {
+      if (!loaded.projects.some((p) => p.name === seed.name)) {
+        loaded.projects.push({ id: uid('proj'), ...seed })
+        needsPersist = true
+      }
+    }
+
+    if (needsPersist) await persist(loaded)
     setData(loaded)
   }
 
@@ -169,12 +220,21 @@ export default function Projects({ flashSaved }) {
             />
           </div>
           <div className="project-field">
-            <label className="field-label">Architecture Detail</label>
+            <label className="field-label">What I've Done</label>
             <textarea
               className="ginput"
               rows={3}
               value={newProj.architecture}
               onChange={(e) => setNewProj((p) => ({ ...p, architecture: e.target.value }))}
+            />
+          </div>
+          <div className="project-field">
+            <label className="field-label">Additional Notes (optional)</label>
+            <textarea
+              className="ginput"
+              rows={3}
+              value={newProj.notes}
+              onChange={(e) => setNewProj((p) => ({ ...p, notes: e.target.value }))}
             />
           </div>
           <div className="add-zone-save-row">
@@ -235,7 +295,7 @@ function ProjectViewCard({ proj, index, onModify, onDelete, onReorder }) {
                     : '',
                   proj.tools ? '<strong>Tools:</strong> ' + escapeHtml(proj.tools.slice(0, 80)) : '',
                   proj.architecture
-                    ? '<strong>Architecture:</strong> ' +
+                    ? "<strong>What I've Done:</strong> " +
                       escapeHtml(proj.architecture.slice(0, 120)) +
                       (proj.architecture.length > 120 ? '…' : '')
                     : '',
@@ -279,13 +339,17 @@ function ProjectEditCard({ proj, onPatch, onCancel, onSave }) {
         <textarea className="ginput" rows={3} value={proj.concepts || ''} onChange={(e) => onPatch({ concepts: e.target.value })} />
       </div>
       <div className="project-field">
-        <label className="field-label">Architecture Detail</label>
+        <label className="field-label">What I've Done</label>
         <textarea
           className="ginput"
           rows={3}
           value={proj.architecture || ''}
           onChange={(e) => onPatch({ architecture: e.target.value })}
         />
+      </div>
+      <div className="project-field">
+        <label className="field-label">Additional Notes (optional)</label>
+        <textarea className="ginput" rows={3} value={proj.notes || ''} onChange={(e) => onPatch({ notes: e.target.value })} />
       </div>
       <div className="add-zone-save-row">
         <button className="btn-outline" onClick={onCancel}>

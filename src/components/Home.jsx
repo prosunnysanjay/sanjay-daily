@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import { storageGet } from '../lib/supabase'
 import { STORAGE_KEYS } from '../lib/supabase'
 import { exportAllData, importAllData } from '../lib/utils'
-import { countTopics } from './StudyTracking'
 
 const NAV_ITEMS = [
   { id: 'daily', icon: '📋', title: 'Daily', desc: "Today's tasks + your timetable, side by side." },
-  { id: 'study', icon: '🧠', title: 'Study Tracking', desc: 'A mindmap of what you\'re learning, topic by topic.' },
   { id: 'revision', icon: '⚡', title: 'Revision', desc: 'Quick-dump notes per subject — what it is, why it matters, interview tips.' },
   { id: 'projects', icon: '🗂️', title: 'Projects', desc: 'Description, tools, concepts, architecture per project.' },
   {
@@ -20,7 +18,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Home({ onNavigate }) {
-  const [stats, setStats] = useState({ openTasks: 0, studyTopicCount: 0, projectCount: 0 })
+  const [stats, setStats] = useState({ openTasks: 0, projectCount: 0 })
   const [featuredQuote, setFeaturedQuote] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -31,19 +29,12 @@ export default function Home({ onNavigate }) {
   async function loadStats() {
     setLoading(true)
     let dailyData = null,
-      studyData = null,
       projectsData = null,
       motivateData = null
 
     try {
       const r = await storageGet(STORAGE_KEYS.daily)
       dailyData = r ? JSON.parse(r.value) : null
-    } catch {
-      /* no data yet */
-    }
-    try {
-      const r = await storageGet(STORAGE_KEYS.studyTracking)
-      studyData = r ? JSON.parse(r.value) : null
     } catch {
       /* no data yet */
     }
@@ -68,10 +59,9 @@ export default function Home({ onNavigate }) {
     }
 
     const openTasks = dailyData && dailyData.focus ? dailyData.focus.filter((f) => !f.done).length : 0
-    const studyTopicCount = studyData && studyData.topics ? countTopics(studyData.topics) : 0
     const projectCount = projectsData && projectsData.projects ? projectsData.projects.length : 0
 
-    setStats({ openTasks, studyTopicCount, projectCount })
+    setStats({ openTasks, projectCount })
     setLoading(false)
   }
 
@@ -109,11 +99,6 @@ export default function Home({ onNavigate }) {
           <div className="hs-label">Today's Open Tasks</div>
           <div className="hs-value">{loading ? '…' : stats.openTasks}</div>
           <div className="hs-sub">on your Daily list</div>
-        </div>
-        <div className="home-stat">
-          <div className="hs-label">Study Topics Tracked</div>
-          <div className="hs-value">{loading ? '…' : stats.studyTopicCount}</div>
-          <div className="hs-sub">on your Study Tracking mindmap</div>
         </div>
         <div className="home-stat">
           <div className="hs-label">Projects Tracked</div>
