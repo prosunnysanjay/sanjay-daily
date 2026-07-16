@@ -1380,6 +1380,25 @@ function azureSubject() {
         ],
       ),
       fullModule(
+        'Containers',
+        [
+          kw('Azure Container Registry (ACR)', 'private image registry; geo-replication, ACR Tasks build/patch, content trust'),
+          kw('Azure Container Instances (ACI)', 'serverless single containers, per-second billing, no orchestration'),
+          kw('Azure Container Apps', 'serverless containers on managed K8s + KEDA + Dapr, scale-to-zero'),
+          kw('AKS', 'managed Kubernetes control plane; you own node pools, upgrades, scaling'),
+          kw('ACR Tasks', 'cloud-side image build on push, base-image update triggers, no local Docker'),
+          kw('AcrPull + managed identity', 'nodes/apps pull from ACR without stored registry creds'),
+          kw('KEDA (Container Apps)', 'event-driven autoscale, scale to zero on no traffic'),
+          kw('Dapr (Container Apps)', 'sidecar building blocks: state, pub/sub, service invocation'),
+        ],
+        [
+          qaPair('Run one container with no cluster, billed per second?', 'Azure Container Instances (ACI) — serverless, no orchestration to manage.'),
+          qaPair('Microservices needing scale-to-zero + event scaling but not full K8s ops?', 'Azure Container Apps (KEDA/Dapr) — much lighter operational burden than AKS.'),
+          qaPair('When do you pick AKS over Container Apps?', 'When you need full Kubernetes control — custom CNI, operators, node tuning — and can own the ops.'),
+          qaPair('AKS image pull from ACR fails with unauthorized?', 'Attach ACR to the cluster (AcrPull via managed identity) instead of managing imagePullSecrets.'),
+        ],
+      ),
+      fullModule(
         'Storage',
         [
           kw('Blob Storage', 'Block/Append/Page blobs; Block for general objects'),
@@ -1402,6 +1421,27 @@ function azureSubject() {
         ],
       ),
       fullModule(
+        'Databases',
+        [
+          kw('Azure SQL Database', 'PaaS SQL; DTU vs vCore, serverless, elastic pools, auto-failover groups'),
+          kw('SQL Managed Instance', 'near-full SQL Server compat (SQL Agent, cross-db, CLR) for lift-and-shift'),
+          kw('Cosmos DB', 'globally distributed multi-model; 5 consistency levels, RU throughput, partition key'),
+          kw('PostgreSQL / MySQL Flexible Server', 'managed OSS DBs, zone-redundant HA, burstable tiers'),
+          kw('Azure Cache for Redis', 'managed Redis for caching/session/pub-sub; Basic/Standard/Premium/Enterprise'),
+          kw('Elastic Pool', 'share DTU/vCore across many databases with uncorrelated load'),
+          kw('Auto-failover group', 'cross-region read-write listener failover for Azure SQL'),
+          kw('Partition key (Cosmos)', 'high-cardinality, even distribution, avoids hot partitions'),
+          kw('Consistency levels (Cosmos)', 'strong / bounded staleness / session / consistent prefix / eventual'),
+        ],
+        [
+          qaPair('Lift-and-shift SQL Server using SQL Agent + cross-database queries?', 'SQL Managed Instance — Azure SQL DB lacks those instance-level features.'),
+          qaPair('Global app needing single-digit-ms reads worldwide with tunable consistency?', 'Cosmos DB with a good partition key; Session consistency by default.'),
+          qaPair('Why Session consistency as the Cosmos default?', 'Read-your-writes for the client without paying strong-consistency latency.'),
+          qaPair('Many small DBs with spiky, uncorrelated load — cost control?', 'Elastic Pool, sharing capacity instead of over-provisioning each database.'),
+          qaPair('Cheapest way to cut read load on a hot product catalog?', 'Azure Cache for Redis in front (cache-aside), not scaling up the database.'),
+        ],
+      ),
+      fullModule(
         'Networking',
         [
           kw('VNet', 'isolated network space, regional, non-transitive peering by default'),
@@ -1414,6 +1454,13 @@ function azureSubject() {
           kw('Private Endpoint', 'NIC with private IP into your VNet for a PaaS resource, kills public exposure'),
           kw('Service Endpoint', 'extends VNet identity to PaaS over Microsoft backbone, still public IP path'),
           kw('NAT Gateway', 'outbound-only SNAT at scale, avoids SNAT port exhaustion on LB'),
+          kw('Azure Firewall', 'managed stateful L3-L7 firewall; FQDN filtering, threat intel, forced tunneling'),
+          kw('Azure Bastion', 'RDP/SSH over TLS in the portal, no public IP on the VM'),
+          kw('DDoS Protection', 'Standard tier adds adaptive tuning + cost-protection SLA vs free Basic'),
+          kw('Azure DNS / Private DNS', 'public DNS hosting; Private DNS zones for VNet name resolution'),
+          kw('Private Link', 'platform behind Private Endpoints; also publish your own service privately'),
+          kw('Virtual WAN', 'managed global hub-and-spoke transit network at scale'),
+          kw('Route Table / UDR', 'user-defined routes to force traffic through an NVA/firewall'),
         ],
         [
           qaPair("Two peered VNets, but a third VNet peered to both can't reach across?", 'Peering is non-transitive — you need a hub-spoke with a firewall/NVA or direct peering, not implicit transitivity.'),
@@ -1421,6 +1468,74 @@ function azureSubject() {
           qaPair('When do you pick ExpressRoute over VPN Gateway?', "When you need guaranteed bandwidth/SLA and can't tolerate internet-path latency/jitter, e.g., real-time replication."),
           qaPair('Storage account still reachable from the internet after adding a Private Endpoint?', "Public network access wasn't disabled on the resource — Private Endpoint adds a path, it doesn't block the old one automatically."),
           qaPair('App Gateway backend pool shows unhealthy but VMs are fine?', 'Usually an NSG or health probe path/port mismatch — check the probe config before touching compute.'),
+          qaPair('Give ops RDP/SSH to VMs without any public IPs?', 'Azure Bastion — brokered RDP/SSH over TLS from the portal; VMs stay private.'),
+          qaPair('Force all spoke egress through a central firewall?', 'UDR (route table) with 0.0.0.0/0 next-hop set to the Azure Firewall/NVA in the hub.'),
+        ],
+      ),
+      fullModule(
+        'Load Balancing & Traffic',
+        [
+          kw('Azure Load Balancer', 'L4 (TCP/UDP), regional, ultra-low latency; Basic vs Standard (zones, SLA)'),
+          kw('Application Gateway', 'L7 (HTTP/S), regional; path/host routing, SSL offload, WAF, autoscaling v2'),
+          kw('Azure Front Door', 'L7 global, anycast edge; CDN + caching + WAF + global HTTP load balancing'),
+          kw('Traffic Manager', 'DNS-based global routing; returns an endpoint, no data path, health probes'),
+          kw('Cross-region Load Balancer', 'global L4, single anycast frontend across regional load balancers'),
+          kw('WAF', 'OWASP CRS on App Gateway or Front Door; detection vs prevention mode'),
+          kw('TM routing methods', 'priority, weighted, performance, geographic, multivalue, subnet'),
+          kw('Session affinity', 'cookie-based sticky backend on App Gateway'),
+          kw('Health probes', 'per-service backend checks; eject unhealthy nodes from rotation'),
+          kw('L4 vs L7', 'L4 routes on IP/port (fast, any protocol); L7 inspects HTTP (routing, WAF, TLS)'),
+        ],
+        [
+          qaPair('Global HTTP entry with CDN + WAF + fast multi-region failover — which?', 'Azure Front Door (global L7, anycast edge, built-in CDN and WAF).'),
+          qaPair('Regional L7 path-based routing to microservices with WAF?', 'Application Gateway (regional L7 + WAF).'),
+          qaPair('Balance non-HTTP TCP traffic within one region at lowest latency?', 'Azure Load Balancer (L4).'),
+          qaPair('Traffic Manager vs Front Door — the key difference?', 'Traffic Manager is DNS-only (client connects directly); Front Door proxies at the edge with caching, WAF, and TLS.'),
+          qaPair('Why did Traffic Manager failover feel slow to users?', 'DNS TTL caching holds the old IP until it expires; Front Door failover is near-instant since it is at the edge.'),
+          qaPair('App Gateway or Front Door for a single-region app?', 'App Gateway — Front Door is for global/multi-region; App Gateway covers regional L7 + WAF without the global overhead.'),
+        ],
+      ),
+      fullModule(
+        'API Management',
+        [
+          kw('API Management (APIM)', 'managed API gateway fronting backend APIs behind one facade'),
+          kw('Gateway', 'enforces policies, routes to backends, terminates TLS'),
+          kw('Products', 'bundle of APIs with access rules; consumers need a subscription'),
+          kw('Subscriptions & keys', 'consumer access via subscription key, or OAuth2/JWT validation'),
+          kw('Policies', 'inbound/backend/outbound pipeline: rate-limit, quota, transform, cache, validate-jwt, rewrite-uri'),
+          kw('Self-hosted gateway', 'containerized gateway near on-prem/other-cloud backends, managed from Azure'),
+          kw('Tiers', 'Consumption (serverless), Developer, Basic, Standard, Premium (VNet, multi-region, SLA)'),
+          kw('Developer portal', 'auto-generated docs, try-it console, consumer onboarding'),
+          kw('Versions & revisions', 'non-breaking revisions vs breaking versions'),
+          kw('Named values / Key Vault', 'reusable config and secrets backed by Key Vault'),
+        ],
+        [
+          qaPair('Expose 30 microservice APIs under one domain with keys, throttling, and docs?', 'API Management — one gateway with Products, subscription keys, and the developer portal.'),
+          qaPair('APIM must route to APIs on-prem/AKS behind a firewall?', 'Deploy a self-hosted gateway container near the backend, managed from the Azure APIM instance.'),
+          qaPair('APIM in front but the backend is still directly reachable — risk?', 'Consumers bypass the gateway; lock the backend to APIM only (VNet/Private Endpoint or IP allowlist).'),
+          qaPair('Which tier for VNet integration + multi-region + 99.99% SLA?', 'Premium — Consumption/Developer lack VNet, multi-region, and SLA.'),
+          qaPair('Turn a legacy SOAP/XML backend into clean REST/JSON for consumers?', 'APIM inbound/outbound policies (rewrite, XML-to-JSON, set-body) without changing the backend.'),
+          qaPair('Rate-limit free consumers but not enterprise ones?', 'Separate Products with different rate-limit/quota policies, gated by subscription.'),
+        ],
+      ),
+      fullModule(
+        'Messaging & Integration',
+        [
+          kw('Service Bus', 'enterprise broker; queues + topics/subscriptions, sessions (FIFO), DLQ, transactions'),
+          kw('Event Grid', 'reactive event routing (pub/sub) for discrete events, push delivery, near-real-time'),
+          kw('Event Hubs', 'high-throughput streaming ingestion (millions/sec), Kafka-compatible, partitions'),
+          kw('Storage Queue', 'simple, cheap queue; at-least-once, 7-day TTL, no advanced features'),
+          kw('Logic Apps', 'low-code workflow/integration, 400+ connectors, orchestration'),
+          kw('Topics & Subscriptions', 'Service Bus pub/sub with per-subscription filters'),
+          kw('Dead-letter queue (DLQ)', 'captures poison/expired messages for inspection'),
+          kw('Sessions', 'Service Bus FIFO + stateful ordered processing per session id'),
+        ],
+        [
+          qaPair('Millions of IoT telemetry events/sec for stream processing?', 'Event Hubs — high-throughput streaming ingestion, partitions, Kafka-compatible.'),
+          qaPair('Order processing needs guaranteed FIFO + transactions + dead-lettering?', 'Service Bus queues with sessions and a DLQ.'),
+          qaPair('Trigger a function whenever a blob is uploaded?', 'Event Grid — reactive discrete-event pub/sub with push delivery.'),
+          qaPair('Service Bus vs Storage Queue — when Storage Queue?', 'Simple, high-volume, cost-sensitive queueing with no need for FIFO/topics/transactions.'),
+          qaPair('Event Grid vs Event Hubs vs Service Bus in one line?', 'Events to react to vs a telemetry stream to ingest vs commands/transactions to process reliably.'),
         ],
       ),
       fullModule(
@@ -1479,6 +1594,11 @@ function azureSubject() {
           kw('-o table / -o json / -o tsv', 'output format switch, tsv useful for scripting'),
           kw('az vm list-sizes / az vm list-skus -l <region>', 'check SKU availability per region'),
           kw('az monitor activity-log list --resource-group <rg>', 'audit recent control-plane actions'),
+          kw('az network vnet/subnet create', 'create virtual networks and subnets'),
+          kw('az network nsg rule create', 'add an NSG security rule'),
+          kw('az network application-gateway create', 'provision an Application Gateway'),
+          kw('az afd profile / endpoint create', 'provision Azure Front Door (afd)'),
+          kw('az apim create', 'provision an API Management instance'),
         ],
         [],
       ),
@@ -3194,7 +3314,7 @@ const SUBJECT_CONTENT_MIGRATIONS = [
   { name: 'Terraform & Terragrunt', marker: 'IaC Concepts', factory: terraformSubject },
   { name: 'Service Mesh', marker: 'Service Mesh Architecture', factory: serviceMeshSubject },
   { name: 'Observability', marker: 'Observability Pillars', factory: observabilitySubject },
-  { name: 'Azure', marker: 'Identity & Governance', factory: azureSubject },
+  { name: 'Azure', marker: 'Load Balancing & Traffic', factory: azureSubject },
   { name: 'Azure Security', marker: 'Identity & Access', factory: azureSecuritySubject },
   { name: 'CI/CD & SCM', marker: 'Source Control Strategies', factory: cicdScmSubject },
   { name: 'AI DevOps Tools', marker: 'Coding Assistants', factory: aiDevOpsToolsSubject },
@@ -3237,6 +3357,15 @@ export default function Revision({ flashSaved }) {
   useEffect(() => {
     load()
   }, [])
+
+  // Open the first subject by default once data is available and nothing is selected.
+  useEffect(() => {
+    if (data && !selectedId && data.subjects.length) {
+      const first = data.subjects[0]
+      setSelectedId(first.id)
+      setSidebarExpanded((e) => ({ ...e, [first.id]: true }))
+    }
+  }, [data, selectedId])
 
   useEffect(() => {
     if (!scrollTarget) return

@@ -40,10 +40,19 @@ describe('Password gate', () => {
 })
 
 describe('Tab navigation', () => {
-  it('shows all 7 tabs', async () => {
+  it('shows all 8 tabs', async () => {
     await unlockApp()
     const tabLabels = [...document.querySelectorAll('.main-tab')].map((t) => t.textContent)
-    expect(tabLabels).toEqual(['Home', 'Daily', 'Revision', 'Projects', 'Jobs', 'Earning Ideas', 'Motivate'])
+    expect(tabLabels).toEqual([
+      'Home',
+      'Daily',
+      'Revision',
+      'DevOps Roadmap',
+      'Projects',
+      'Jobs',
+      'Earning Ideas',
+      'Motivate',
+    ])
   })
 
   it('clicking Daily switches the panel', async () => {
@@ -271,6 +280,85 @@ describe('Revision tab', () => {
     expect(within(revMain()).getByText('Storage')).toBeInTheDocument()
     // The sidebar tree stays a full, unfiltered index for navigation.
     expect(within(revSidebar()).getByText('Pods & Multi-Container Patterns')).toBeInTheDocument()
+  })
+})
+
+describe('DevOps Roadmap tab', () => {
+  function rmMain() {
+    return document.querySelector('.roadmap-main')
+  }
+  function rmSidebar() {
+    return document.querySelector('.roadmap-sidebar')
+  }
+
+  it('renders the seeded chronological phases plus a left-hand nav list', async () => {
+    await unlockApp()
+    clickMainTab('DevOps Roadmap')
+    await waitFor(() => expect(within(rmMain()).getByText('Phase 1 — Foundations & Fundamentals')).toBeInTheDocument())
+    // AI phase inserted before Leadership, which is now Phase 12.
+    expect(within(rmMain()).getByText('Phase 11 — AI, ML & GenAI Engineering')).toBeInTheDocument()
+    expect(within(rmMain()).getByText('Phase 12 — Leadership & Strategy')).toBeInTheDocument()
+    // The left nav mirrors the phase titles.
+    expect(within(rmSidebar()).getByText('Phase 1 — Foundations & Fundamentals')).toBeInTheDocument()
+    // A phase is expanded by default, so its steps show. PowerShell now covered.
+    expect(within(rmMain()).getByText('Scripting')).toBeInTheDocument()
+    expect(screen.getByText(/PowerShell/)).toBeInTheDocument()
+  })
+
+  it('collapses a phase to hide its steps, then expands it again', async () => {
+    await unlockApp()
+    clickMainTab('DevOps Roadmap')
+    await waitFor(() => within(rmMain()).getByText('Linux & OS internals'))
+    const head = within(rmMain()).getByText('Phase 1 — Foundations & Fundamentals').closest('.roadmap-phase-head')
+    fireEvent.click(within(head).getByText('Phase 1 — Foundations & Fundamentals'))
+    await waitFor(() => expect(within(rmMain()).queryByText('Linux & OS internals')).not.toBeInTheDocument())
+    fireEvent.click(within(head).getByText('Phase 1 — Foundations & Fundamentals'))
+    await waitFor(() => expect(within(rmMain()).getByText('Linux & OS internals')).toBeInTheDocument())
+  })
+
+  it('adds a new phase via the modal', async () => {
+    await unlockApp()
+    clickMainTab('DevOps Roadmap')
+    await waitFor(() => screen.getByText('+ Add Phase'))
+    fireEvent.click(screen.getByText('+ Add Phase'))
+    await waitFor(() => screen.getByText('New Phase'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. Phase 13 — Emerging Tech'), {
+      target: { value: 'Phase 13 — Quantum Ops' },
+    })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(within(rmMain()).getByText('Phase 13 — Quantum Ops')).toBeInTheDocument())
+  })
+
+  it('adds a step to a phase', async () => {
+    await unlockApp()
+    clickMainTab('DevOps Roadmap')
+    await waitFor(() => within(rmMain()).getByText('Linux & OS internals'))
+    const phaseBody = within(rmMain()).getByText('Linux & OS internals').closest('.roadmap-phase-body')
+    const input = within(phaseBody).getByPlaceholderText('Add a step...')
+    fireEvent.change(input, { target: { value: 'Text editors (vim, tmux)' } })
+    fireEvent.click(within(phaseBody).getByText('Add'))
+    await waitFor(() => expect(within(rmMain()).getByText('Text editors (vim, tmux)')).toBeInTheDocument())
+  })
+
+  it('edits a step title inline and shows the new text', async () => {
+    await unlockApp()
+    clickMainTab('DevOps Roadmap')
+    await waitFor(() => within(rmMain()).getByText('Linux & OS internals'))
+    const row = within(rmMain()).getByText('Linux & OS internals').closest('.roadmap-item')
+    fireEvent.click(within(row).getByTitle('Edit'))
+    const titleInput = screen.getByDisplayValue('Linux & OS internals')
+    fireEvent.change(titleInput, { target: { value: 'Linux internals & kernel' } })
+    fireEvent.click(screen.getByText('Save', { selector: '.roadmap-item-edit-actions .btn' }))
+    await waitFor(() => expect(within(rmMain()).getByText('Linux internals & kernel')).toBeInTheDocument())
+  })
+
+  it('deletes a step', async () => {
+    await unlockApp()
+    clickMainTab('DevOps Roadmap')
+    await waitFor(() => within(rmMain()).getByText('CLI mastery'))
+    const row = within(rmMain()).getByText('CLI mastery').closest('.roadmap-item')
+    fireEvent.click(within(row).getByTitle('Delete'))
+    await waitFor(() => expect(within(rmMain()).queryByText('CLI mastery')).not.toBeInTheDocument())
   })
 })
 

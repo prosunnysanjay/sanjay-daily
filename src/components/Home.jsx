@@ -6,6 +6,7 @@ import { exportAllData, importAllData } from '../lib/utils'
 const NAV_ITEMS = [
   { id: 'daily', icon: '📋', title: 'Daily', desc: "Today's tasks + your timetable, side by side." },
   { id: 'revision', icon: '⚡', title: 'Revision', desc: 'Quick-dump notes per subject — what it is, why it matters, interview tips.' },
+  { id: 'roadmap', icon: '🗺️', title: 'DevOps Roadmap', desc: 'A chronological path to Principal Cloud Architect & DevOps Leader.' },
   { id: 'projects', icon: '🗂️', title: 'Projects', desc: 'Description, tools, concepts, architecture per project.' },
   {
     id: 'jobs',
