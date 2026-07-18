@@ -1618,3 +1618,380 @@ footer {
     max-height: 240px;
   }
 }
+
+/* ---- Things I Have (notebook) ---- */
+.things-intro {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+.things-section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.things-section.drag-over {
+  border-top: 2px solid var(--accent) !important;
+}
+.things-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.things-section-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 4px 4px;
+  border-radius: 5px;
+}
+.things-section-title:focus {
+  outline: none;
+  background: var(--input-bg);
+}
+.things-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.things-col-add {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.things-col-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.things-section-actions button.danger {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 3px 6px;
+}
+.things-section-actions button.danger:hover {
+  color: var(--bad);
+}
+.things-section-body {
+  padding: 12px;
+}
+.things-text {
+  width: 100%;
+  min-height: 90px;
+  line-height: 1.55;
+}
+.things-table-wrap {
+  overflow-x: auto;
+}
+.things-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.things-table th,
+.things-table td {
+  border: 1px solid var(--line);
+  padding: 1px 4px;
+  text-align: left;
+  vertical-align: middle;
+}
+.things-table thead th {
+  background: var(--bg);
+}
+.things-th-spacer {
+  width: 26px;
+  padding: 0 !important;
+}
+.things-th-cell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.things-col-input {
+  flex: 1;
+  min-width: 60px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 5px 3px;
+  border-radius: 4px;
+}
+.things-col-input:focus {
+  outline: none;
+  background: var(--input-bg);
+  color: var(--ink);
+}
+.things-col-del {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--line);
+  font-size: 11px;
+  padding: 2px 3px;
+  flex-shrink: 0;
+}
+.things-col-del:hover {
+  color: var(--bad);
+}
+.things-cell-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 4px;
+  border-radius: 4px;
+}
+.things-cell-input:focus {
+  outline: none;
+  background: var(--input-bg);
+}
+.things-td-handle {
+  width: 26px;
+  text-align: center;
+  padding: 0 !important;
+}
+.things-td-handle .drag-handle {
+  font-size: 12px;
+  padding: 2px;
+}
+.things-td-del {
+  width: 30px;
+  text-align: center;
+  padding: 0 !important;
+}
+.things-td-del button.danger {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 12px;
+  padding: 4px;
+}
+.things-td-del button.danger:hover {
+  color: var(--bad);
+}
+.things-row.drag-over td {
+  border-top: 2px solid var(--accent);
+}
+.things-empty {
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 12.5px;
+  padding: 8px 6px !important;
+}
+.things-add-row {
+  margin-top: 8px;
+  border: 1px dashed var(--line);
+  background: var(--bg);
+  color: var(--ink-soft);
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.things-add-row:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---- Projects: sidebar + readable detail ---- */
+.projects-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.projects-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+.projects-sidebar-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.projects-sidebar-toolbar .btn-outline,
+.projects-sidebar-toolbar .add-trigger-btn {
+  flex: 1;
+  padding: 7px 8px;
+  font-size: 12px;
+  text-align: center;
+}
+.projects-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.projects-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.projects-nav-item:hover {
+  background: var(--accent-soft);
+}
+.projects-nav-item.active {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+.projects-nav-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.projects-nav-item .drag-handle {
+  font-size: 12px;
+  padding: 0 2px;
+}
+.projects-main {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 700px) {
+  .projects-layout {
+    flex-direction: column;
+  }
+  .projects-sidebar {
+    width: 100%;
+    position: static;
+    max-height: 220px;
+  }
+}
+
+.project-detail {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+}
+.project-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.project-detail-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.project-detail-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.project-detail-actions button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.project-detail-actions button:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.project-detail-actions button.danger:hover {
+  color: var(--bad);
+  background: var(--bad-bg);
+}
+.project-field-block {
+  margin-bottom: 18px;
+}
+.project-field-block:last-child {
+  margin-bottom: 0;
+}
+.project-field-heading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin-bottom: 7px;
+}
+.project-field-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.project-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.project-chip {
+  font-size: 12px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 3px 11px;
+}
+.project-chip-alt {
+  background: var(--input-bg);
+}
+.project-donelist {
+  margin: 0;
+  padding-left: 20px;
+}
+.project-donelist li {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  margin-bottom: 7px;
+}
+.project-donelist li::marker {
+  color: var(--accent);
+}
+.project-donelist li:last-child {
+  margin-bottom: 0;
+}

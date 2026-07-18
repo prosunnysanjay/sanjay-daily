@@ -40,12 +40,13 @@ describe('Password gate', () => {
 })
 
 describe('Tab navigation', () => {
-  it('shows all 8 tabs', async () => {
+  it('shows all 9 tabs', async () => {
     await unlockApp()
     const tabLabels = [...document.querySelectorAll('.main-tab')].map((t) => t.textContent)
     expect(tabLabels).toEqual([
       'Home',
       'Daily',
+      'Things I Have',
       'Revision',
       'DevOps Roadmap',
       'Projects',
@@ -145,6 +146,62 @@ describe('Daily tab', () => {
       const row = fakeTable.find((r) => r.key === 'sanjay_daily_dual_v1')
       expect(row).toBeTruthy()
     })
+  })
+})
+
+describe('Things I Have tab', () => {
+  it('renders the seeded notebook sections and cell values', async () => {
+    await unlockApp()
+    clickMainTab('Things I Have')
+    await waitFor(() => expect(screen.getByDisplayValue('Official Certificates')).toBeInTheDocument())
+    expect(screen.getByDisplayValue('AZ-900 — Azure Fundamentals')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('HashiCorp Terraform Associate')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Completed Projects')).toBeInTheDocument()
+  })
+
+  it('adds a row to a table section', async () => {
+    await unlockApp()
+    clickMainTab('Things I Have')
+    await waitFor(() => screen.getByDisplayValue('Official Certificates'))
+    const section = screen.getByDisplayValue('Official Certificates').closest('.things-section')
+    const before = section.querySelectorAll('.things-row').length
+    fireEvent.click(within(section).getByText('+ Add row'))
+    await waitFor(() => expect(section.querySelectorAll('.things-row').length).toBe(before + 1))
+  })
+
+  it('edits a cell value and it sticks', async () => {
+    await unlockApp()
+    clickMainTab('Things I Have')
+    await waitFor(() => screen.getByDisplayValue('HashiCorp Terraform Associate'))
+    const cell = screen.getByDisplayValue('HashiCorp Terraform Associate')
+    fireEvent.change(cell, { target: { value: 'Terraform Associate (003)' } })
+    fireEvent.blur(cell)
+    await waitFor(() => expect(screen.getByDisplayValue('Terraform Associate (003)')).toBeInTheDocument())
+  })
+
+  it('adds a new table section', async () => {
+    await unlockApp()
+    clickMainTab('Things I Have')
+    await waitFor(() => screen.getByText('+ Table'))
+    fireEvent.click(screen.getByText('+ Table'))
+    await waitFor(() => expect(screen.getByDisplayValue('New Section')).toBeInTheDocument())
+  })
+
+  it('adds a text note section', async () => {
+    await unlockApp()
+    clickMainTab('Things I Have')
+    await waitFor(() => screen.getByText('+ Note'))
+    fireEvent.click(screen.getByText('+ Note'))
+    await waitFor(() => expect(screen.getByDisplayValue('New Note')).toBeInTheDocument())
+  })
+
+  it('deletes a section', async () => {
+    await unlockApp()
+    clickMainTab('Things I Have')
+    await waitFor(() => screen.getByDisplayValue('Completed Projects'))
+    const section = screen.getByDisplayValue('Completed Projects').closest('.things-section')
+    fireEvent.click(within(section).getByTitle('Delete section'))
+    await waitFor(() => expect(screen.queryByDisplayValue('Completed Projects')).not.toBeInTheDocument())
   })
 })
 
@@ -363,6 +420,26 @@ describe('DevOps Roadmap tab', () => {
 })
 
 describe('Projects tab', () => {
+  function projMain() {
+    return document.querySelector('.projects-main')
+  }
+  function projSidebar() {
+    return document.querySelector('.projects-sidebar')
+  }
+
+  it('opens the first seeded project by default in a readable detail view', async () => {
+    await unlockApp()
+    clickMainTab('Projects')
+    await waitFor(() =>
+      expect(within(projMain()).getByText('MindBridge AI Auditor — KPMG Clara Analytics (KCA AITS)')).toBeInTheDocument(),
+    )
+    // Tools render as chips, and "What I've Done" renders as a labelled block.
+    expect(within(projMain()).getByText('Overview')).toBeInTheDocument()
+    expect(within(projMain()).getByText("What I've Done")).toBeInTheDocument()
+    // The sidebar lists every project for selection.
+    expect(within(projSidebar()).getByText('Cloud-Native E-Commerce Platform (100+ Microservices)')).toBeInTheDocument()
+  })
+
   it('shows alert when saving without a name', async () => {
     await unlockApp()
     clickMainTab('Projects')
@@ -373,7 +450,7 @@ describe('Projects tab', () => {
     expect(global.alert).toHaveBeenCalledWith('Give the project a name first.')
   })
 
-  it('saves a project via the add modal and shows it as a card', async () => {
+  it('saves a project via the add modal and selects it in the detail view', async () => {
     await unlockApp()
     clickMainTab('Projects')
     await waitFor(() => screen.getByText('+ Add Project'))
@@ -382,23 +459,23 @@ describe('Projects tab', () => {
     const nameInput = screen.getByPlaceholderText('Project name...')
     fireEvent.change(nameInput, { target: { value: 'Test Project' } })
     fireEvent.click(screen.getByText('Save Project'))
-    await waitFor(() => expect(screen.getByText('Test Project')).toBeInTheDocument())
+    await waitFor(() => expect(within(projMain()).getByText('Test Project')).toBeInTheDocument())
     expect(screen.queryByText('New Project')).not.toBeInTheDocument()
   })
 
-  it('captures architecture detail as plain text', async () => {
+  it('captures architecture detail as readable text', async () => {
     await unlockApp()
     clickMainTab('Projects')
     await waitFor(() => screen.getByText('+ Add Project'))
     fireEvent.click(screen.getByText('+ Add Project'))
     await waitFor(() => screen.getByPlaceholderText('Project name...'))
     fireEvent.change(screen.getByPlaceholderText('Project name...'), { target: { value: 'Arch Project' } })
-    // Modal field order: Name, Description, Tools Used, Concepts Covered, Architecture Detail.
+    // Modal field order: Name, Description, Tools Used, Concepts Covered, What I've Done, Notes.
     const fields = screen.getAllByRole('textbox')
     fireEvent.change(fields[4], { target: { value: 'Client -> API -> DB' } })
     fireEvent.click(screen.getByText('Save Project'))
-    await waitFor(() => screen.getByText('Arch Project'))
-    expect(screen.getByText(/Client -> API -> DB/)).toBeInTheDocument()
+    await waitFor(() => within(projMain()).getByText('Arch Project'))
+    expect(within(projMain()).getByText(/Client -> API -> DB/)).toBeInTheDocument()
   })
 
   it('modify then save changes updates the title', async () => {
@@ -409,14 +486,13 @@ describe('Projects tab', () => {
     await waitFor(() => screen.getByPlaceholderText('Project name...'))
     fireEvent.change(screen.getByPlaceholderText('Project name...'), { target: { value: 'Original Name' } })
     fireEvent.click(screen.getByText('Save Project'))
-    await waitFor(() => screen.getByText('Original Name'))
+    await waitFor(() => within(projMain()).getByText('Original Name'))
 
-    const card = screen.getByText('Original Name').closest('.saved-card')
-    fireEvent.click(within(card).getByText('✎ Modify'))
-    const editInputs = screen.getAllByDisplayValue('Original Name')
-    fireEvent.change(editInputs[0], { target: { value: 'Renamed Project' } })
+    fireEvent.click(within(projMain()).getByText('✎ Modify'))
+    const editInput = screen.getByDisplayValue('Original Name')
+    fireEvent.change(editInput, { target: { value: 'Renamed Project' } })
     fireEvent.click(screen.getByText('Save Changes'))
-    await waitFor(() => expect(screen.getByText('Renamed Project')).toBeInTheDocument())
+    await waitFor(() => expect(within(projMain()).getByText('Renamed Project')).toBeInTheDocument())
   })
 
   it('delete removes the project', async () => {
@@ -427,9 +503,8 @@ describe('Projects tab', () => {
     await waitFor(() => screen.getByPlaceholderText('Project name...'))
     fireEvent.change(screen.getByPlaceholderText('Project name...'), { target: { value: 'ToDelete' } })
     fireEvent.click(screen.getByText('Save Project'))
-    await waitFor(() => screen.getByText('ToDelete'))
-    const card = screen.getByText('ToDelete').closest('.saved-card')
-    fireEvent.click(within(card).getByText('✕ Delete'))
+    await waitFor(() => within(projMain()).getByText('ToDelete'))
+    fireEvent.click(within(projMain()).getByText('✕ Delete'))
     await waitFor(() => expect(screen.queryByText('ToDelete')).not.toBeInTheDocument())
   })
 })

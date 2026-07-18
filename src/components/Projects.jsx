@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { storageGet, storageSet, STORAGE_KEYS } from '../lib/supabase'
-import { uid, escapeHtml, dragHandlers, reorderArray, makeUndoStack } from '../lib/utils'
+import { uid, dragHandlers, reorderArray, makeUndoStack } from '../lib/utils'
 import Modal from './Modal'
 
 const undoStack = makeUndoStack(20)
@@ -45,8 +45,16 @@ const SEED_PROJECTS = [
   },
 ]
 
+function splitList(s) {
+  return (s || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+}
+
 export default function Projects({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newProj, setNewProj] = useState({ ...BLANK_PROJECT })
@@ -54,6 +62,14 @@ export default function Projects({ flashSaved }) {
   useEffect(() => {
     load()
   }, [])
+
+  // Keep a project selected: default to the first, and recover if the selected
+  // one was deleted.
+  useEffect(() => {
+    if (!data || !data.projects.length) return
+    const exists = data.projects.some((p) => p.id === selectedId)
+    if (!exists) setSelectedId(data.projects[0].id)
+  }, [data, selectedId])
 
   async function load() {
     let loaded = { projects: [] }
@@ -100,6 +116,8 @@ export default function Projects({ flashSaved }) {
 
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
+  const selectedProject = data.projects.find((p) => p.id === selectedId) || null
+
   function openAddModal() {
     setNewProj({ ...BLANK_PROJECT })
     setShowAddModal(true)
@@ -114,11 +132,19 @@ export default function Projects({ flashSaved }) {
       alert('Give the project a name first.')
       return
     }
+    const id = uid('proj')
     update((d) => {
-      d.projects.push({ id: uid('proj'), ...newProj })
+      d.projects.push({ id, ...newProj })
     })
+    setSelectedId(id)
+    setEditingId(null)
     setNewProj({ ...BLANK_PROJECT })
     setShowAddModal(false)
+  }
+
+  function selectProject(id) {
+    setEditingId(null)
+    setSelectedId(id)
   }
 
   function deleteProject(id, name) {
@@ -126,6 +152,7 @@ export default function Projects({ flashSaved }) {
     update((d) => {
       d.projects = d.projects.filter((p) => p.id !== id)
     })
+    setEditingId(null)
   }
 
   function startEdit(id) {
@@ -170,16 +197,7 @@ export default function Projects({ flashSaved }) {
   }
 
   return (
-    <div>
-      <div className="tab-toolbar">
-        <button className="btn-outline" onClick={handleUndo}>
-          ↺ Undo
-        </button>
-        <button className="add-trigger-btn" onClick={openAddModal}>
-          + Add Project
-        </button>
-      </div>
-
+    <div className="projects-layout">
       {showAddModal && (
         <Modal title="New Project" onClose={closeAddModal}>
           <div className="project-field">
@@ -208,6 +226,7 @@ export default function Projects({ flashSaved }) {
               rows={2}
               value={newProj.tools}
               onChange={(e) => setNewProj((p) => ({ ...p, tools: e.target.value }))}
+              placeholder="Comma-separated, e.g. Azure, AKS, Terraform"
             />
           </div>
           <div className="project-field">
@@ -217,15 +236,17 @@ export default function Projects({ flashSaved }) {
               rows={2}
               value={newProj.concepts}
               onChange={(e) => setNewProj((p) => ({ ...p, concepts: e.target.value }))}
+              placeholder="Comma-separated"
             />
           </div>
           <div className="project-field">
             <label className="field-label">What I've Done</label>
             <textarea
               className="ginput"
-              rows={3}
+              rows={4}
               value={newProj.architecture}
               onChange={(e) => setNewProj((p) => ({ ...p, architecture: e.target.value }))}
+              placeholder="One bullet per line (start lines with -)"
             />
           </div>
           <div className="project-field">
@@ -248,77 +269,139 @@ export default function Projects({ flashSaved }) {
         </Modal>
       )}
 
-      {data.projects.length > 0 && <div className="saved-entries-label">Saved Projects</div>}
+      <aside className="projects-sidebar">
+        <div className="projects-sidebar-toolbar">
+          <button className="btn-outline" onClick={handleUndo}>
+            ↺ Undo
+          </button>
+          <button className="add-trigger-btn" onClick={openAddModal}>
+            + Add Project
+          </button>
+        </div>
 
-      {data.projects.length === 0 && (
-        <div className="empty-state-sm">No projects yet — tap "+ Add Project" above.</div>
-      )}
+        {data.projects.length === 0 && <div className="empty-state-sm">No projects yet.</div>}
 
-      {data.projects.map((proj, idx) =>
-        editingId === proj.id ? (
-          <ProjectEditCard
-            key={proj.id}
-            proj={proj}
-            onPatch={(patch) => patchProject(proj.id, patch)}
-            onCancel={cancelEdit}
-            onSave={saveEdit}
-          />
-        ) : (
-          <ProjectViewCard
-            key={proj.id}
-            proj={proj}
-            index={idx}
-            onModify={() => startEdit(proj.id)}
-            onDelete={() => deleteProject(proj.id, proj.name)}
-            onReorder={reorderProjects}
-          />
-        ),
-      )}
+        <div className="projects-nav">
+          {data.projects.map((p, idx) => (
+            <div
+              key={p.id}
+              className={`projects-nav-item ${p.id === selectedId ? 'active' : ''}`}
+              {...dragHandlers(idx, reorderProjects)}
+              onClick={() => selectProject(p.id)}
+            >
+              <span className="drag-handle" onClick={(e) => e.stopPropagation()}>
+                ⠿
+              </span>
+              <span className="projects-nav-name">{p.name || '(untitled project)'}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <div className="projects-main">
+        {!selectedProject && <div className="empty-state-sm">Pick a project on the left.</div>}
+
+        {selectedProject &&
+          (editingId === selectedProject.id ? (
+            <ProjectEditCard
+              proj={selectedProject}
+              onPatch={(patch) => patchProject(selectedProject.id, patch)}
+              onCancel={cancelEdit}
+              onSave={saveEdit}
+            />
+          ) : (
+            <ProjectDetail
+              proj={selectedProject}
+              onModify={() => startEdit(selectedProject.id)}
+              onDelete={() => deleteProject(selectedProject.id, selectedProject.name)}
+            />
+          ))}
+      </div>
     </div>
   )
 }
 
-function ProjectViewCard({ proj, index, onModify, onDelete, onReorder }) {
+function ProjectDetail({ proj, onModify, onDelete }) {
+  const tools = splitList(proj.tools)
+  const concepts = splitList(proj.concepts)
+  const doneLines = (proj.architecture || '')
+    .split('\n')
+    .map((l) => l.replace(/^\s*[-•]\s*/, '').trim())
+    .filter(Boolean)
+
   return (
-    <div className="saved-card" {...dragHandlers(index, onReorder)}>
-      <div className="saved-card-view">
-        <span className="drag-handle">⠿</span>
-        <div className="saved-card-body">
-          <div className="saved-card-title">{proj.name || '(untitled project)'}</div>
-          <div
-            className="saved-card-meta"
-            dangerouslySetInnerHTML={{
-              __html:
-                [
-                  proj.description
-                    ? escapeHtml(proj.description.slice(0, 120)) + (proj.description.length > 120 ? '…' : '')
-                    : '',
-                  proj.tools ? '<strong>Tools:</strong> ' + escapeHtml(proj.tools.slice(0, 80)) : '',
-                  proj.architecture
-                    ? "<strong>What I've Done:</strong> " +
-                      escapeHtml(proj.architecture.slice(0, 120)) +
-                      (proj.architecture.length > 120 ? '…' : '')
-                    : '',
-                ]
-                  .filter(Boolean)
-                  .join('<br>') || '<em>No description yet</em>',
-            }}
-          />
-        </div>
-        <div className="saved-card-actions">
+    <div className="project-detail">
+      <div className="project-detail-head">
+        <div className="project-detail-title">{proj.name || '(untitled project)'}</div>
+        <div className="project-detail-actions">
           <button onClick={onModify}>✎ Modify</button>
           <button className="danger" onClick={onDelete}>
             ✕ Delete
           </button>
         </div>
       </div>
+
+      {proj.description && (
+        <div className="project-field-block">
+          <div className="project-field-heading">Overview</div>
+          <div className="project-field-text">{proj.description}</div>
+        </div>
+      )}
+
+      {tools.length > 0 && (
+        <div className="project-field-block">
+          <div className="project-field-heading">Tools Used</div>
+          <div className="project-chips">
+            {tools.map((t, i) => (
+              <span key={i} className="project-chip">
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {concepts.length > 0 && (
+        <div className="project-field-block">
+          <div className="project-field-heading">Concepts Covered</div>
+          <div className="project-chips">
+            {concepts.map((t, i) => (
+              <span key={i} className="project-chip project-chip-alt">
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {proj.architecture && (
+        <div className="project-field-block">
+          <div className="project-field-heading">What I've Done</div>
+          {doneLines.length > 1 ? (
+            <ul className="project-donelist">
+              {doneLines.map((l, i) => (
+                <li key={i}>{l}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="project-field-text">{proj.architecture}</div>
+          )}
+        </div>
+      )}
+
+      {proj.notes && (
+        <div className="project-field-block">
+          <div className="project-field-heading">Additional Notes</div>
+          <div className="project-field-text">{proj.notes}</div>
+        </div>
+      )}
     </div>
   )
 }
 
 function ProjectEditCard({ proj, onPatch, onCancel, onSave }) {
   return (
-    <div className="saved-card" style={{ border: '1.5px solid var(--accent)' }}>
+    <div className="project-detail" style={{ border: '1.5px solid var(--accent)' }}>
       <label className="field-label">Project Name</label>
       <input
         className="text-input"
@@ -342,7 +425,7 @@ function ProjectEditCard({ proj, onPatch, onCancel, onSave }) {
         <label className="field-label">What I've Done</label>
         <textarea
           className="ginput"
-          rows={3}
+          rows={5}
           value={proj.architecture || ''}
           onChange={(e) => onPatch({ architecture: e.target.value })}
         />
