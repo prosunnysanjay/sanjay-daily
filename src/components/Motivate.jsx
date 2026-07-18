@@ -17,6 +17,7 @@ function buildSeed() {
 
 export default function Motivate({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [quoteInput, setQuoteInput] = useState('')
 
   useEffect(() => {
@@ -24,20 +25,27 @@ export default function Motivate({ flashSaved }) {
   }, [])
 
   async function load() {
-    let loaded
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.motivate)
-      if (result && result.value) loaded = JSON.parse(result.value)
-      else {
-        loaded = buildSeed()
-        await persist(loaded)
+      result = await storageGet(STORAGE_KEYS.motivate)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Motivate: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
       }
-    } catch {
-      loaded = buildSeed()
-      await persist(loaded)
+      result = null
     }
-    if (!loaded.featuredId && loaded.quotes.length) loaded.featuredId = loaded.quotes[0].id
-    setData(loaded)
+    try {
+      const loaded = result && result.value ? JSON.parse(result.value) : buildSeed()
+      if (!Array.isArray(loaded.quotes)) loaded.quotes = []
+      if (!loaded.featuredId && loaded.quotes.length) loaded.featuredId = loaded.quotes[0].id
+      if (!result || !result.value) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Motivate: saved data exists but failed to parse, leaving it untouched', e)
+      setLoadError(true)
+    }
   }
 
   async function persist(next) {
@@ -59,6 +67,13 @@ export default function Motivate({ flashSaved }) {
     })
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   const featured = data.quotes.find((q) => q.id === data.featuredId) || data.quotes[0]

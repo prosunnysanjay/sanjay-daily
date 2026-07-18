@@ -1,19 +1,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+
+vi.mock('../lib/supabaseClient', async () => {
+  const { fakeSupabase } = await import('./testUtils')
+  return { supabase: fakeSupabase }
+})
+
 import App from '../App'
-import { installFakeFetch, resetFakeTable, fakeTable } from './testUtils'
+import { resetFakeTable, resetFakeAuth, fakeTable, TEST_EMAIL, TEST_PASSWORD } from './testUtils'
 
 beforeEach(() => {
   resetFakeTable()
-  installFakeFetch()
+  resetFakeAuth()
   window.sessionStorage.clear()
 })
 
 async function unlockApp() {
   render(<App />)
-  const input = screen.getByPlaceholderText('Password')
-  fireEvent.change(input, { target: { value: 'RoseandSanjay' } })
-  fireEvent.click(screen.getByText('Unlock'))
+  const emailInput = await screen.findByPlaceholderText('Email')
+  fireEvent.change(emailInput, { target: { value: TEST_EMAIL } })
+  fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: TEST_PASSWORD } })
+  fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
   await waitFor(() => expect(document.querySelector('.main-tabs')).toBeInTheDocument())
 }
 
@@ -25,15 +32,16 @@ function clickMainTab(label) {
 }
 
 describe('Password gate', () => {
-  it('blocks access with wrong password', () => {
+  it('blocks access with wrong credentials', async () => {
     render(<App />)
-    const input = screen.getByPlaceholderText('Password')
-    fireEvent.change(input, { target: { value: 'wrong' } })
-    fireEvent.click(screen.getByText('Unlock'))
-    expect(screen.getByText(/not it/)).toBeInTheDocument()
+    const emailInput = await screen.findByPlaceholderText('Email')
+    fireEvent.change(emailInput, { target: { value: 'wrong@example.com' } })
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'wrong' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(screen.getByText(/Invalid login credentials/)).toBeInTheDocument())
   })
 
-  it('grants access with correct password', async () => {
+  it('grants access with correct credentials', async () => {
     await unlockApp()
     expect(screen.getByText('Home')).toBeInTheDocument()
   })
@@ -146,6 +154,42 @@ describe('Daily tab', () => {
       const row = fakeTable.find((r) => r.key === 'sanjay_daily_dual_v1')
       expect(row).toBeTruthy()
     })
+  })
+
+  it('repairs a corrupted null task entry instead of crashing', async () => {
+    fakeTable.push({
+      key: 'sanjay_daily_dual_v1',
+      user_id: 'test-user-id',
+      value: {
+        focusLabel: 'TODAY',
+        timetableLabel: 'Timetable',
+        focus: [],
+        sections: [
+          {
+            id: 'work',
+            label: 'Work & Career',
+            color: '#5C7A99',
+            tasks: [
+              { id: 't1', text: 'Real task one', done: false, starred: false },
+              null,
+              { id: 't2', text: 'Real task two', done: false, starred: false },
+            ],
+          },
+        ],
+        timetable: { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [] },
+        activeDay: 'Mon',
+      },
+    })
+
+    await unlockApp()
+    clickMainTab('Daily')
+
+    await waitFor(() => expect(screen.getByText('Real task one')).toBeInTheDocument())
+    expect(screen.getByText('Real task two')).toBeInTheDocument()
+    expect(document.querySelectorAll('.task-list li').length).toBe(2)
+
+    const row = fakeTable.find((r) => r.key === 'sanjay_daily_dual_v1')
+    expect(row.value.sections[0].tasks.every((t) => t && t.id)).toBe(true)
   })
 })
 

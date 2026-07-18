@@ -54,6 +54,7 @@ function splitList(s) {
 
 export default function Projects({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -72,27 +73,37 @@ export default function Projects({ flashSaved }) {
   }, [data, selectedId])
 
   async function load() {
-    let loaded = { projects: [] }
-    let needsPersist = false
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.projects)
-      if (result && result.value) loaded = JSON.parse(result.value)
-      else needsPersist = true
-    } catch {
-      needsPersist = true
-    }
-
-    // One-time seed: add each resume project once (matched by name), leaving any
-    // projects the user already added or edited untouched.
-    for (const seed of SEED_PROJECTS) {
-      if (!loaded.projects.some((p) => p.name === seed.name)) {
-        loaded.projects.push({ id: uid('proj'), ...seed })
-        needsPersist = true
+      result = await storageGet(STORAGE_KEYS.projects)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Projects: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
       }
+      result = null
     }
+    try {
+      const loaded = result && result.value ? JSON.parse(result.value) : { projects: [] }
+      if (!Array.isArray(loaded.projects)) loaded.projects = []
+      let needsPersist = !result || !result.value
 
-    if (needsPersist) await persist(loaded)
-    setData(loaded)
+      // One-time seed: add each resume project once (matched by name), leaving any
+      // projects the user already added or edited untouched.
+      for (const seed of SEED_PROJECTS) {
+        if (!loaded.projects.some((p) => p.name === seed.name)) {
+          loaded.projects.push({ id: uid('proj'), ...seed })
+          needsPersist = true
+        }
+      }
+
+      if (needsPersist) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Projects: saved data exists but failed to parse, leaving it untouched', e)
+      setLoadError(true)
+    }
   }
 
   async function persist(next) {
@@ -114,6 +125,13 @@ export default function Projects({ flashSaved }) {
     })
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   const selectedProject = data.projects.find((p) => p.id === selectedId) || null

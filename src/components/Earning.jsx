@@ -12,21 +12,36 @@ const LISTS = [
 
 export default function Earning({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     load()
   }, [])
 
   async function load() {
-    let loaded = { personal: [], study: [], business: [] }
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.earning)
-      if (result && result.value) loaded = JSON.parse(result.value)
-      else await persist(loaded)
-    } catch {
-      await persist(loaded)
+      result = await storageGet(STORAGE_KEYS.earning)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Earning: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
+      }
+      result = null
     }
-    setData(loaded)
+    try {
+      const fresh = { personal: [], study: [], business: [] }
+      const loaded = result && result.value ? JSON.parse(result.value) : fresh
+      for (const key of ['personal', 'study', 'business']) {
+        if (!Array.isArray(loaded[key])) loaded[key] = []
+      }
+      if (!result || !result.value) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Earning: saved data exists but failed to parse, leaving it untouched', e)
+      setLoadError(true)
+    }
   }
 
   async function persist(next) {
@@ -48,6 +63,13 @@ export default function Earning({ flashSaved }) {
     })
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   function addIdea(listKey) {

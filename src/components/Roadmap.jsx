@@ -132,15 +132,16 @@ export function countRoadmapSteps(phases) {
 
 function normalizePhase(p) {
   return {
-    id: p.id,
-    title: p.title,
+    id: p.id || uid('phase'),
+    title: p.title || '',
     timeframe: p.timeframe || '',
-    steps: Array.isArray(p.steps) ? p.steps : [],
+    steps: (Array.isArray(p.steps) ? p.steps : []).filter((s) => s && typeof s === 'object' && s.id),
   }
 }
 
 export default function Roadmap({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [collapsed, setCollapsed] = useState({})
   const [scrollTarget, setScrollTarget] = useState(null)
   const [editingStep, setEditingStep] = useState(null) // { phaseId, stepId }
@@ -161,10 +162,20 @@ export default function Roadmap({ flashSaved }) {
   }, [scrollTarget])
 
   async function load() {
-    let loaded = defaultData()
-    let needsPersist = false
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.roadmap)
+      result = await storageGet(STORAGE_KEYS.roadmap)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Roadmap: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
+      }
+      result = null
+    }
+    try {
+      let loaded
+      let needsPersist = false
       if (result && result.value) {
         const parsed = JSON.parse(result.value)
         if ((parsed.version || 1) < ROADMAP_VERSION) {
@@ -175,14 +186,16 @@ export default function Roadmap({ flashSaved }) {
           loaded = parsed
         }
       } else {
+        loaded = defaultData()
         needsPersist = true
       }
-    } catch {
-      needsPersist = true
+      loaded.phases = (Array.isArray(loaded.phases) ? loaded.phases : []).map(normalizePhase)
+      if (needsPersist) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Roadmap: saved data exists but failed to parse, leaving it untouched', e)
+      setLoadError(true)
     }
-    loaded.phases = (loaded.phases || []).map(normalizePhase)
-    if (needsPersist) await persist(loaded)
-    setData(loaded)
   }
 
   async function persist(next) {
@@ -215,6 +228,13 @@ export default function Roadmap({ flashSaved }) {
     persist(prev)
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   function toggleCollapse(id) {

@@ -8,6 +8,7 @@ const BLANK_CO = { company: '', role: '', link: '', notes: '', jd: '', steps: ''
 
 export default function Jobs({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newCo, setNewCo] = useState({ ...BLANK_CO })
@@ -19,15 +20,27 @@ export default function Jobs({ flashSaved }) {
   }, [])
 
   async function load() {
-    let loaded = { companies: [], freelance: [] }
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.jobs)
-      if (result && result.value) loaded = JSON.parse(result.value)
-      else await persist(loaded)
-    } catch {
-      await persist(loaded)
+      result = await storageGet(STORAGE_KEYS.jobs)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Jobs: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
+      }
+      result = null
     }
-    setData(loaded)
+    try {
+      const loaded = result && result.value ? JSON.parse(result.value) : { companies: [], freelance: [] }
+      if (!Array.isArray(loaded.companies)) loaded.companies = []
+      if (!Array.isArray(loaded.freelance)) loaded.freelance = []
+      if (!result || !result.value) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Jobs: saved data exists but failed to parse, leaving it untouched', e)
+      setLoadError(true)
+    }
   }
 
   async function persist(next) {
@@ -49,6 +62,13 @@ export default function Jobs({ flashSaved }) {
     })
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   function openAddModal() {

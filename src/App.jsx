@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PasswordGate from './components/PasswordGate'
+import ErrorBoundary from './components/ErrorBoundary'
 import Home from './components/Home'
 import Daily from './components/Daily'
 import ThingsIHave from './components/ThingsIHave'
@@ -85,15 +86,17 @@ function AppShell() {
         ))}
       </div>
 
-      {activeTab === 'home' && <Home onNavigate={setActiveTab} />}
-      {activeTab === 'daily' && <Daily flashSaved={flashSaved} />}
-      {activeTab === 'things' && <ThingsIHave flashSaved={flashSaved} />}
-      {activeTab === 'revision' && <Revision flashSaved={flashSaved} />}
-      {activeTab === 'roadmap' && <Roadmap flashSaved={flashSaved} />}
-      {activeTab === 'projects' && <Projects flashSaved={flashSaved} />}
-      {activeTab === 'jobs' && <Jobs flashSaved={flashSaved} />}
-      {activeTab === 'earning' && <Earning flashSaved={flashSaved} />}
-      {activeTab === 'motivate' && <Motivate flashSaved={flashSaved} />}
+      <ErrorBoundary resetKey={activeTab}>
+        {activeTab === 'home' && <Home onNavigate={setActiveTab} />}
+        {activeTab === 'daily' && <Daily flashSaved={flashSaved} />}
+        {activeTab === 'things' && <ThingsIHave flashSaved={flashSaved} />}
+        {activeTab === 'revision' && <Revision flashSaved={flashSaved} />}
+        {activeTab === 'roadmap' && <Roadmap flashSaved={flashSaved} />}
+        {activeTab === 'projects' && <Projects flashSaved={flashSaved} />}
+        {activeTab === 'jobs' && <Jobs flashSaved={flashSaved} />}
+        {activeTab === 'earning' && <Earning flashSaved={flashSaved} />}
+        {activeTab === 'motivate' && <Motivate flashSaved={flashSaved} />}
+      </ErrorBoundary>
 
       <div className={`save-pill ${savePillVisible ? 'show' : ''}`}>Saved</div>
     </div>

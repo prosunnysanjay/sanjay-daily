@@ -3342,6 +3342,7 @@ export function countModules(subjects) {
 
 export default function Revision({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [sidebarExpanded, setSidebarExpanded] = useState({})
   const [expanded, setExpanded] = useState({})
@@ -3375,33 +3376,49 @@ export default function Revision({ flashSaved }) {
   }, [scrollTarget])
 
   async function load() {
-    let loaded = defaultData()
-    let needsPersist = false
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.revision)
-      if (result && result.value) loaded = JSON.parse(result.value)
-      else needsPersist = true
-    } catch {
-      needsPersist = true
+      result = await storageGet(STORAGE_KEYS.revision)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Revision: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
+      }
+      result = null
     }
-
-    // One-time migration: subjects seeded before the keyword/Q&A format existed
-    // (or before a subject's content was authored/rewritten) still carry the old
-    // placeholder/legacy module list — swap in the current content once per subject.
-    for (const mig of SUBJECT_CONTENT_MIGRATIONS) {
-      const idx = loaded.subjects.findIndex((s) => s.name === mig.name)
-      if (idx !== -1 && !loaded.subjects[idx].modules.some((m) => m.title === mig.marker)) {
-        loaded.subjects[idx] = { ...loaded.subjects[idx], modules: mig.factory().modules }
+    try {
+      let loaded
+      let needsPersist = false
+      if (result && result.value) {
+        loaded = JSON.parse(result.value)
+      } else {
+        loaded = defaultData()
         needsPersist = true
       }
+      loaded.subjects = Array.isArray(loaded.subjects) ? loaded.subjects : []
+
+      // One-time migration: subjects seeded before the keyword/Q&A format existed
+      // (or before a subject's content was authored/rewritten) still carry the old
+      // placeholder/legacy module list — swap in the current content once per subject.
+      for (const mig of SUBJECT_CONTENT_MIGRATIONS) {
+        const idx = loaded.subjects.findIndex((s) => s.name === mig.name)
+        if (idx !== -1 && !(loaded.subjects[idx].modules || []).some((m) => m.title === mig.marker)) {
+          loaded.subjects[idx] = { ...loaded.subjects[idx], modules: mig.factory().modules }
+          needsPersist = true
+        }
+      }
+
+      loaded.subjects.forEach((s) => {
+        s.modules = (Array.isArray(s.modules) ? s.modules : []).map(normalizeModule)
+      })
+
+      if (needsPersist) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Revision: saved data exists but failed to parse/migrate, leaving it untouched', e)
+      setLoadError(true)
     }
-
-    loaded.subjects.forEach((s) => {
-      s.modules = s.modules.map(normalizeModule)
-    })
-
-    if (needsPersist) await persist(loaded)
-    setData(loaded)
   }
 
   async function persist(next) {
@@ -3434,6 +3451,13 @@ export default function Revision({ flashSaved }) {
     persist(prev)
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   const selectedSubject = data.subjects.find((s) => s.id === selectedId) || null

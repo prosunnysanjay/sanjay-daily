@@ -1,49 +1,59 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
-// NOTE: this is a simple deterrent, not real security. The password below
-// ships inside the JavaScript bundle and is visible to anyone who looks at
-// the page source or browser dev tools. It stops a casual visitor from
-// wandering in; it will not stop someone who deliberately goes looking.
-const APP_PASSWORD = 'RoseandSanjay'
-const SESSION_KEY = 'sanjay_daily_unlocked'
-
+// Real auth: Supabase Auth session + Row Level Security scope access to this
+// one signed-in user, so a stolen/public API key alone can't read or write
+// the data (unlike the old hardcoded client-side password).
 export default function PasswordGate({ children }) {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(SESSION_KEY) === 'true')
-  const [input, setInput] = useState('')
-  const [error, setError] = useState(false)
+  const [session, setSession] = useState(undefined) // undefined = still checking, null = signed out
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function handleSubmit(e) {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (input === APP_PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, 'true')
-      setUnlocked(true)
-      setError(false)
-    } else {
-      setError(true)
-    }
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setError(error.message)
+    setBusy(false)
   }
 
-  if (unlocked) return children
+  if (session === undefined) return <div className="login-wrap" />
+  if (session) return children
 
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-eyebrow">Sanjay's Daily</div>
-        <h1 className="login-title">Enter password</h1>
+        <h1 className="login-title">Sign in</h1>
+        <input
+          type="email"
+          className="login-input"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          autoFocus
+        />
         <input
           type="password"
           className="login-input"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value)
-            setError(false)
-          }}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
-          autoFocus
         />
-        {error && <div className="login-error">That's not it — try again.</div>}
-        <button type="submit" className="btn login-btn">
-          Unlock
+        {error && <div className="login-error">{error}</div>}
+        <button type="submit" className="btn login-btn" disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </div>

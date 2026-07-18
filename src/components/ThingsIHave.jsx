@@ -58,6 +58,7 @@ function normalizeSection(s) {
 
 export default function ThingsIHave({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const beforeEditRef = useRef(null)
 
   useEffect(() => {
@@ -65,16 +66,26 @@ export default function ThingsIHave({ flashSaved }) {
   }, [])
 
   async function load() {
-    let loaded = defaultData()
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.things)
-      if (result && result.value) loaded = JSON.parse(result.value)
-      else await persist(loaded)
-    } catch {
-      await persist(loaded)
+      result = await storageGet(STORAGE_KEYS.things)
+    } catch (e) {
+      if (e.message !== 'not found') {
+        console.error('Things: could not reach storage, leaving any saved data untouched', e)
+        setLoadError(true)
+        return
+      }
+      result = null
     }
-    loaded.sections = (loaded.sections || []).map(normalizeSection)
-    setData(loaded)
+    try {
+      const loaded = result && result.value ? JSON.parse(result.value) : defaultData()
+      loaded.sections = (Array.isArray(loaded.sections) ? loaded.sections : []).map(normalizeSection)
+      if (!result || !result.value) await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Things: saved data exists but failed to parse, leaving it untouched', e)
+      setLoadError(true)
+    }
   }
 
   async function persist(next) {
@@ -137,6 +148,13 @@ export default function ThingsIHave({ flashSaved }) {
     persist(prev)
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   // ----- drag helpers: only the handle is the drag source, so cell inputs stay

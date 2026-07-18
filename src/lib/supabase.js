@@ -1,27 +1,22 @@
 // Shared storage layer backed by Supabase, used by every tab component.
-// Same get/set/delete/list shape as the old single-file version's shim,
-// so each component's logic reads almost identically to before.
+// Same get/set/delete/list shape as the old raw-fetch shim, so each
+// component's logic is unchanged — but requests now go through the
+// authenticated client so Row Level Security can actually scope access
+// to the signed-in user instead of relying on a public key alone.
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://xrcpwknppvwujqsgrtqh.supabase.co'
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || 'sb_publishable_R37nWr-nLqdGQ3Wh56tctg_ek7TqgRl'
-const REST_BASE = `${SUPABASE_URL}/rest/v1/app_storage`
+import { supabase } from './supabaseClient'
 
-function headers(extra = {}) {
-  return {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${SUPABASE_KEY}`,
-    'Content-Type': 'application/json',
-    ...extra,
-  }
+async function currentUserId() {
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) throw new Error('Not signed in')
+  return data.user.id
 }
 
 export async function storageGet(key) {
-  const url = `${REST_BASE}?key=eq.${encodeURIComponent(key)}&select=key,value`
-  const res = await fetch(url, { headers: headers() })
-  if (!res.ok) throw new Error(`Supabase GET failed: ${res.status}`)
-  const rows = await res.json()
-  if (!rows.length) throw new Error('not found')
-  return { key, value: JSON.stringify(rows[0].value) }
+  const { data, error } = await supabase.from('app_storage').select('key,value').eq('key', key).maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('not found')
+  return { key, value: JSON.stringify(data.value) }
 }
 
 export async function storageSet(key, value) {
@@ -31,39 +26,32 @@ export async function storageSet(key, value) {
   } catch {
     parsedValue = value
   }
-  const url = `${REST_BASE}?on_conflict=key`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: headers({ Prefer: 'resolution=merge-duplicates,return=representation' }),
-    body: JSON.stringify([{ key, value: parsedValue, updated_at: new Date().toISOString() }]),
-  })
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '')
-    throw new Error(`Supabase SET failed: ${res.status} ${errText}`)
-  }
+  const user_id = await currentUserId()
+  const { error } = await supabase
+    .from('app_storage')
+    .upsert({ key, value: parsedValue, user_id, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) throw error
   return { key, value }
 }
 
 export async function storageDelete(key) {
-  const url = `${REST_BASE}?key=eq.${encodeURIComponent(key)}`
-  const res = await fetch(url, { method: 'DELETE', headers: headers() })
-  if (!res.ok) throw new Error(`Supabase DELETE failed: ${res.status}`)
+  const { error } = await supabase.from('app_storage').delete().eq('key', key)
+  if (error) throw error
   return { key, deleted: true }
 }
 
 export async function storageList(prefix) {
-  let url = `${REST_BASE}?select=key`
-  if (prefix) url += `&key=like.${encodeURIComponent(prefix)}*`
-  const res = await fetch(url, { headers: headers() })
-  if (!res.ok) throw new Error(`Supabase LIST failed: ${res.status}`)
-  const rows = await res.json()
-  return { keys: rows.map((r) => r.key), prefix }
+  let query = supabase.from('app_storage').select('key')
+  if (prefix) query = query.like('key', `${prefix}%`)
+  const { data, error } = await query
+  if (error) throw error
+  return { keys: data.map((r) => r.key), prefix }
 }
 
 export async function healthCheck() {
   try {
-    const res = await fetch(`${REST_BASE}?select=key&limit=1`, { headers: headers() })
-    return { ok: res.ok, status: res.status }
+    const { error } = await supabase.from('app_storage').select('key').limit(1)
+    return { ok: !error, status: error ? 0 : 200, error: error?.message }
   } catch (e) {
     return { ok: false, status: 0, error: e.message }
   }
