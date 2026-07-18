@@ -92,11 +92,17 @@ function buildDefaultData() {
 function migrateData(loaded) {
   if (!loaded.focusLabel) loaded.focusLabel = 'TODAY'
   if (!loaded.timetableLabel) loaded.timetableLabel = 'Timetable'
-  loaded.sections = loaded.sections || []
+  loaded.sections = Array.isArray(loaded.sections) ? loaded.sections : []
+  // A past drag-and-drop bug could splice a hole into a tasks array, which
+  // serializes as null — strip those out before anything reads task.id/text.
+  loaded.sections.forEach((s) => {
+    s.tasks = Array.isArray(s.tasks) ? s.tasks.filter((t) => t && typeof t === 'object' && t.id) : []
+  })
   const defaultSectionId = loaded.sections[0] && loaded.sections[0].id
 
-  loaded.focus = (loaded.focus || [])
+  loaded.focus = (Array.isArray(loaded.focus) ? loaded.focus : [])
     .map((f) => {
+      if (!f || typeof f !== 'object') return null
       if (f.sectionId && f.taskId) {
         const section = loaded.sections.find((s) => s.id === f.sectionId)
         const task = section && section.tasks.find((t) => t.id === f.taskId)
@@ -130,10 +136,23 @@ function migrateData(loaded) {
       return { sectionId: section.id, taskId }
     })
     .filter(Boolean)
+
+  loaded.timetable = loaded.timetable && typeof loaded.timetable === 'object' ? loaded.timetable : {}
+  DAYS.forEach((d) => {
+    if (!Array.isArray(loaded.timetable[d])) {
+      loaded.timetable[d] = DEFAULT_TIMETABLE.map((slot) => ({ id: uid('s'), time: slot.time, activity: slot.activity }))
+    } else {
+      loaded.timetable[d] = loaded.timetable[d].filter((s) => s && typeof s === 'object' && s.id)
+    }
+  })
+  if (!DAYS.includes(loaded.activeDay)) {
+    loaded.activeDay = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]
+  }
 }
 
 export default function Daily({ flashSaved }) {
   const [data, setData] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState({})
   const [focusInput, setFocusInput] = useState('')
   const [focusSection, setFocusSection] = useState('')
@@ -146,18 +165,28 @@ export default function Daily({ flashSaved }) {
   }, [])
 
   async function load() {
-    let loaded
+    let result
     try {
-      const result = await storageGet(STORAGE_KEYS.daily)
-      loaded = result && result.value ? JSON.parse(result.value) : buildDefaultData()
+      result = await storageGet(STORAGE_KEYS.daily)
+    } catch {
+      // Nothing stored yet (or a transient read error) — seed defaults.
+      // Never fall through to this on a parse/migration failure below, since
+      // that would mean real saved data exists and must not be overwritten.
+      const fresh = buildDefaultData()
+      await persist(fresh)
+      setData(fresh)
+      return
+    }
+    try {
+      const loaded = result && result.value ? JSON.parse(result.value) : buildDefaultData()
       const before = JSON.stringify(loaded)
       migrateData(loaded)
       if (!result || !result.value || JSON.stringify(loaded) !== before) await persist(loaded)
-    } catch {
-      loaded = buildDefaultData()
-      await persist(loaded)
+      setData(loaded)
+    } catch (e) {
+      console.error('Daily: failed to parse/migrate saved data, leaving it untouched in storage', e)
+      setLoadError(true)
     }
-    setData(loaded)
   }
 
   async function persist(next) {
@@ -189,6 +218,13 @@ export default function Daily({ flashSaved }) {
     persist(prev)
   }
 
+  if (loadError) {
+    return (
+      <div className="empty-state-sm">
+        Couldn't load your saved data. Nothing has been changed or overwritten — try reloading the page.
+      </div>
+    )
+  }
   if (!data) return <div className="empty-state-sm">Loading…</div>
 
   const focusSectionId = focusSection || (data.sections[0] && data.sections[0].id) || ''
@@ -432,6 +468,7 @@ export default function Daily({ flashSaved }) {
                           key={task.id}
                           task={task}
                           index={idx}
+                          listId={section.id}
                           onToggle={() => toggleTaskDone(section.id, task.id)}
                           onEdit={(text) => editTaskText(section.id, task.id, text)}
                           onStar={() => toggleStar(section.id, task.id)}
@@ -545,7 +582,7 @@ function EditableHeading({ as: Tag, className, text, onSave }) {
 function FocusRow({ item, index, sectionLabel, onToggle, onEdit, onRemove, onReorder }) {
   const [editing, setEditing] = useState(false)
   return (
-    <li {...dragHandlers(index, onReorder)}>
+    <li {...dragHandlers(index, onReorder, 'focus')}>
       <span className="drag-handle" title="Drag to reorder">
         ⠿
       </span>
@@ -578,10 +615,10 @@ function FocusRow({ item, index, sectionLabel, onToggle, onEdit, onRemove, onReo
   )
 }
 
-function TaskRow({ task, index, onToggle, onEdit, onStar, onRemove, onReorder }) {
+function TaskRow({ task, index, listId, onToggle, onEdit, onStar, onRemove, onReorder }) {
   const [editing, setEditing] = useState(false)
   return (
-    <li {...dragHandlers(index, onReorder)}>
+    <li {...dragHandlers(index, onReorder, listId)}>
       <span className="drag-handle" title="Drag to reorder">
         ⠿
       </span>
@@ -622,7 +659,7 @@ function TaskRow({ task, index, onToggle, onEdit, onStar, onRemove, onReorder })
 
 function TimetableRow({ slot, index, onEditTime, onEditActivity, onRemove, onReorder }) {
   return (
-    <div className="tt-row" {...dragHandlers(index, onReorder)}>
+    <div className="tt-row" {...dragHandlers(index, onReorder, 'timetable')}>
       <span className="drag-handle" title="Drag to reorder">
         ⠿
       </span>

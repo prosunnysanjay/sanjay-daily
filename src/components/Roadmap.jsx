@@ -389,7 +389,7 @@ export default function Roadmap({ flashSaved }) {
             const isOpen = !collapsed[p.id]
             return (
               <div key={p.id} id={`roadmap-phase-${p.id}`} className="roadmap-phase">
-                <div className="roadmap-phase-head" {...dragHandlers(idx, reorderPhases)}>
+                <div className="roadmap-phase-head" {...dragHandlers(idx, reorderPhases, 'phases')}>
                   <span className="drag-handle" onClick={(e) => e.stopPropagation()}>
                     ⠿
                   </span>
@@ -446,7 +446,7 @@ export default function Roadmap({ flashSaved }) {
                         <div
                           className="roadmap-item"
                           key={s.id}
-                          {...dragHandlers(sIdx, (from, to) => reorderSteps(p.id, from, to))}
+                          {...dragHandlers(sIdx, (from, to) => reorderSteps(p.id, from, to), p.id)}
                         >
                           <span className="drag-handle">⠿</span>
                           <span className="roadmap-item-marker">◆</span>

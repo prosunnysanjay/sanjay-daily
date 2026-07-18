@@ -100,7 +100,7 @@ export default function Earning({ flashSaved }) {
           <h2>{title}</h2>
           {data[key].length === 0 && <div className="empty-state-sm">No ideas yet.</div>}
           {data[key].map((idea, idx) => (
-            <div className="idea-row" key={idea.id} {...dragHandlers(idx, (from, to) => reorderIdeas(key, from, to))}>
+            <div className="idea-row" key={idea.id} {...dragHandlers(idx, (from, to) => reorderIdeas(key, from, to), key)}>
               <span className="drag-handle">⠿</span>
               <input
                 className="idea-title"

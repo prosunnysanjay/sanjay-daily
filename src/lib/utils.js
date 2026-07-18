@@ -32,6 +32,9 @@ export function makeUndoStack(limit = 20) {
 }
 
 export function reorderArray(arr, fromIndex, toIndex) {
+  if (!Array.isArray(arr) || fromIndex < 0 || fromIndex >= arr.length || toIndex < 0 || toIndex >= arr.length) {
+    return Array.isArray(arr) ? arr.slice() : arr
+  }
   const copy = arr.slice()
   const [item] = copy.splice(fromIndex, 1)
   copy.splice(toIndex, 0, item)
@@ -39,13 +42,17 @@ export function reorderArray(arr, fromIndex, toIndex) {
 }
 
 // React-friendly drag handlers: spread these onto a row element along with
-// a .drag-handle child, and pass index + a reorder callback.
-export function dragHandlers(index, onReorder) {
+// a .drag-handle child, and pass index + a reorder callback. Pass a listId
+// when multiple separate lists can be visible/draggable at once (e.g. tasks
+// in different sections) so a drag started in one list is ignored if dropped
+// onto another — otherwise the dropped-on list reorders using an index that
+// belongs to a different list, which can silently corrupt data.
+export function dragHandlers(index, onReorder, listId = null) {
   return {
     draggable: true,
     onDragStart: (e) => {
       e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', String(index))
+      e.dataTransfer.setData('text/plain', JSON.stringify({ index, listId }))
       e.currentTarget.classList.add('dragging')
     },
     onDragEnd: (e) => {
@@ -61,9 +68,17 @@ export function dragHandlers(index, onReorder) {
     onDrop: (e) => {
       e.preventDefault()
       e.currentTarget.classList.remove('drag-over')
-      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10)
+      let payload
+      try {
+        payload = JSON.parse(e.dataTransfer.getData('text/plain'))
+      } catch {
+        return
+      }
+      if (!payload || typeof payload.index !== 'number') return
+      if ((payload.listId ?? null) !== listId) return
+      const fromIndex = payload.index
       const toIndex = index
-      if (fromIndex === toIndex || isNaN(fromIndex)) return
+      if (fromIndex === toIndex) return
       onReorder(fromIndex, toIndex)
     },
   }
