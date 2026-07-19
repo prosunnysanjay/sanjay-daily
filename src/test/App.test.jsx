@@ -48,13 +48,14 @@ describe('Password gate', () => {
 })
 
 describe('Tab navigation', () => {
-  it('shows all 9 tabs', async () => {
+  it('shows all 10 tabs', async () => {
     await unlockApp()
     const tabLabels = [...document.querySelectorAll('.main-tab')].map((t) => t.textContent)
     expect(tabLabels).toEqual([
       'Home',
       'Daily',
       'Things I Have',
+      'Tracking',
       'Revision',
       'DevOps Roadmap',
       'Projects',
@@ -246,6 +247,86 @@ describe('Things I Have tab', () => {
     const section = screen.getByDisplayValue('Completed Projects').closest('.things-section')
     fireEvent.click(within(section).getByTitle('Delete section'))
     await waitFor(() => expect(screen.queryByDisplayValue('Completed Projects')).not.toBeInTheDocument())
+  })
+})
+
+describe('Tracking tab', () => {
+  function trackMain() {
+    return document.querySelector('.projects-main')
+  }
+  function trackSidebar() {
+    return document.querySelector('.projects-sidebar')
+  }
+
+  it('defaults to the first category, shown in the sidebar and opened', async () => {
+    await unlockApp()
+    clickMainTab('Tracking')
+    await waitFor(() => expect(within(trackSidebar()).getByText(/Notes — Subject & Location/)).toBeInTheDocument())
+    expect(within(trackSidebar()).getByText(/Money Management/)).toBeInTheDocument()
+    expect(within(trackSidebar()).getByText(/Important Documents Backup/)).toBeInTheDocument()
+    expect(within(trackMain()).getByDisplayValue('Notes Location')).toBeInTheDocument()
+  })
+
+  it('selecting Money Management shows all six sub-tables', async () => {
+    await unlockApp()
+    clickMainTab('Tracking')
+    await waitFor(() => within(trackSidebar()).getByText(/Money Management/))
+    fireEvent.click(within(trackSidebar()).getByText(/Money Management/))
+    await waitFor(() =>
+      expect(trackMain().querySelectorAll('.things-section-title').length).toBeGreaterThanOrEqual(6),
+    )
+    const titles = [...trackMain().querySelectorAll('.things-section-title')].map((el) => el.value)
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        'Balance Tracking',
+        'Insurance & Recharge Tracking',
+        'Investment',
+        'Growing',
+        'Liabilities',
+        'Assets',
+      ]),
+    )
+  })
+
+  it('adds a row to a table without affecting other tables', async () => {
+    await unlockApp()
+    clickMainTab('Tracking')
+    await waitFor(() => within(trackSidebar()).getByText(/Money Management/))
+    fireEvent.click(within(trackSidebar()).getByText(/Money Management/))
+    await waitFor(() => within(trackMain()).getByDisplayValue('Assets'))
+    const assetsTable = within(trackMain()).getByDisplayValue('Assets').closest('.things-section')
+    const before = assetsTable.querySelectorAll('.things-row').length
+    fireEvent.click(within(assetsTable).getByText('+ Add row'))
+    await waitFor(() => expect(assetsTable.querySelectorAll('.things-row').length).toBe(before + 1))
+    const liabilitiesTable = within(trackMain()).getByDisplayValue('Liabilities').closest('.things-section')
+    expect(liabilitiesTable.querySelectorAll('.things-row').length).toBe(1)
+  })
+
+  it('edits a cell and it sticks', async () => {
+    await unlockApp()
+    clickMainTab('Tracking')
+    await waitFor(() => within(trackMain()).getByDisplayValue('Notes Location'))
+    const cell = trackMain().querySelector('.things-cell-input')
+    fireEvent.change(cell, { target: { value: 'Docker notes' } })
+    fireEvent.blur(cell)
+    await waitFor(() => expect(screen.getByDisplayValue('Docker notes')).toBeInTheDocument())
+  })
+
+  it('adds a new category and selects it', async () => {
+    await unlockApp()
+    clickMainTab('Tracking')
+    await waitFor(() => screen.getByText('+ Category'))
+    fireEvent.click(screen.getByText('+ Category'))
+    await waitFor(() => expect(within(trackMain()).getByDisplayValue('New Category')).toBeInTheDocument())
+  })
+
+  it('persists to fake Supabase table under its own key', async () => {
+    await unlockApp()
+    clickMainTab('Tracking')
+    await waitFor(() => {
+      const row = fakeTable.find((r) => r.key === 'sanjay_tracking_v1')
+      expect(row).toBeTruthy()
+    })
   })
 })
 

@@ -4,6 +4,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import Home from './components/Home'
 import Daily from './components/Daily'
 import ThingsIHave from './components/ThingsIHave'
+import Tracking from './components/Tracking'
 import Revision from './components/Revision'
 import Roadmap from './components/Roadmap'
 import Projects from './components/Projects'
@@ -24,6 +25,12 @@ const TABS = [
     label: 'Things I Have',
     title: 'Things I Have',
     sub: 'Your notebook — certificates, courses, projects, and notes. Edit, reorder, add anything.',
+  },
+  {
+    id: 'tracking',
+    label: 'Tracking',
+    title: 'Tracking',
+    sub: 'Notes locations, money management, and document backups — organized by category.',
   },
   {
     id: 'revision',
@@ -90,6 +97,7 @@ function AppShell() {
         {activeTab === 'home' && <Home onNavigate={setActiveTab} />}
         {activeTab === 'daily' && <Daily flashSaved={flashSaved} />}
         {activeTab === 'things' && <ThingsIHave flashSaved={flashSaved} />}
+        {activeTab === 'tracking' && <Tracking flashSaved={flashSaved} />}
         {activeTab === 'revision' && <Revision flashSaved={flashSaved} />}
         {activeTab === 'roadmap' && <Roadmap flashSaved={flashSaved} />}
         {activeTab === 'projects' && <Projects flashSaved={flashSaved} />}
